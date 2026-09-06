@@ -23,10 +23,10 @@ Plataforma completa e moderna de controle financeiro pessoal e consolidação de
 
 ### Orquestração (Docker)
 - `docker-compose.yml` orquestrando:
-  - `postgres`: Banco de dados relacional (porta 5432)
-  - `redis`: Cache de cotações e sessões (porta 6379)
-  - `backend`: API REST Golang compilada em imagem multi-stage leve (porta 8080)
-  - `frontend`: Aplicação React servida via Nginx otimizado (porta 3000)
+  - `postgres`: Banco de dados relacional (porta 5433)
+  - `redis`: Cache de cotações e sessões (porta 6380)
+  - `backend`: API REST Golang compilada em imagem multi-stage leve (porta 8081)
+  - `frontend`: Aplicação React servida via Nginx otimizado (porta 3001)
 
 ---
 
@@ -75,8 +75,8 @@ docker compose up -d --build
 ```
 
 ### 3. Acessar a aplicação
-- **Frontend Web**: [http://localhost:3000](http://localhost:3000)
-- **API Backend**: [http://localhost:8080/api/v1/health](http://localhost:8080/api/v1/health)
+- **Frontend Web**: [http://localhost:3001](http://localhost:3001)
+- **API Backend**: [http://localhost:8081/api/v1/health](http://localhost:8081/api/v1/health)
 
 ---
 

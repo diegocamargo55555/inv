@@ -8,7 +8,7 @@ services:
       POSTGRES_PASSWORD: ${DB_PASS:-postgres123}
       POSTGRES_DB: ${DB_NAME:-invest_db}
     ports:
-      - "${DB_PORT:-5432}:5432"
+      - "${DB_PORT:-5433}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -24,7 +24,7 @@ services:
     container_name: inv_redis
     restart: unless-stopped
     ports:
-      - "${REDIS_PORT:-6379}:6379"
+      - "${REDIS_PORT:-6380}:6379"
     volumes:
       - redis_data:/data
     healthcheck:
@@ -43,7 +43,7 @@ services:
     restart: unless-stopped
     environment:
       - APP_ENV=${APP_ENV:-development}
-      - HTTP_PORT=${HTTP_PORT:-8080}
+      - HTTP_PORT=${HTTP_PORT:-8081}
       - DB_HOST=postgres
       - DB_PORT=5432
       - DB_USER=${DB_USER:-postgres}
@@ -59,7 +59,7 @@ services:
       - BRAPI_TOKEN=${BRAPI_TOKEN:-}
       - FINNHUB_TOKEN=${FINNHUB_TOKEN:-}
     ports:
-      - "${HTTP_PORT:-8080}:8080"
+      - "${HTTP_PORT:-8081}:8081"
     depends_on:
       postgres:
         condition: service_healthy
@@ -75,7 +75,7 @@ services:
     container_name: inv_frontend
     restart: unless-stopped
     ports:
-      - "${FRONTEND_PORT:-3000}:80"
+      - "${FRONTEND_PORT:-3001}:80"
     depends_on:
       - backend
     networks:

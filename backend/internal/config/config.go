@@ -31,14 +31,14 @@ func LoadConfig() (*Config, error) {
 
 	cfg := &Config{
 		AppEnv:        getEnv("APP_ENV", "development"),
-		HTTPPort:      getEnv("HTTP_PORT", "8080"),
+		HTTPPort:      getEnv("HTTP_PORT", "8081"),
 		DBHost:        getEnv("DB_HOST", "localhost"),
-		DBPort:        getEnv("DB_PORT", "5432"),
+		DBPort:        getEnv("DB_PORT", "5433"),
 		DBUser:        getEnv("DB_USER", "postgres"),
 		DBPassword:    getEnv("DB_PASS", "postgres123"),
 		DBName:        getEnv("DB_NAME", "invest_db"),
 		DBSSLMode:     getEnv("DB_SSLMODE", "disable"),
-		RedisAddr:     getEnv("REDIS_ADDR", "localhost:6379"),
+		RedisAddr:     getEnv("REDIS_ADDR", "localhost:6380"),
 		RedisPassword: getEnv("REDIS_PASSWORD", ""),
 		RedisDB:       0,
 		JWTSecret:     getEnv("JWT_SECRET", "supersecret-jwt-key-for-dev-only-32chars"),
