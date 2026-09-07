@@ -80,6 +80,9 @@ export const Investments: React.FC = () => {
       setAvailableAssets(assetsRes.data)
       setSearchResults(assetsRes.data)
       setAccounts(accsRes.data)
+      if (accsRes.data.length > 0 && !selectedAccountId) {
+        setSelectedAccountId(accsRes.data[0].id)
+      }
 
       const portId = selectedPortId || (portsRes.data.length > 0 ? portsRes.data[0].id : '')
       if (portId) {
@@ -158,6 +161,11 @@ export const Investments: React.FC = () => {
     setLiveQuoteBadge(null)
     setAvailableCustodyQty(null)
     setCustodyAveragePrice(null)
+    if (accounts.length > 0) {
+      setSelectedAccountId((prev) => (prev && accounts.some((a) => a.id === prev) ? prev : accounts[0].id))
+    } else {
+      setSelectedAccountId('')
+    }
     setIsOrderModalOpen(true)
   }
 
@@ -231,6 +239,18 @@ export const Investments: React.FC = () => {
     if (orderType === 'sell' && availableCustodyQty !== null && qtyNum > availableCustodyQty) {
       setFormError(`Quantidade máxima para venda é de ${availableCustodyQty} cotas/ações em custódia.`)
       return
+    }
+
+    // Validate account debit for buy (aporte)
+    if (orderType === 'buy') {
+      if (accounts.length === 0) {
+        setFormError('Você precisa cadastrar uma conta bancária em Finanças antes de realizar um aporte para que o valor possa ser debitado.')
+        return
+      }
+      if (!selectedAccountId) {
+        setFormError('Selecione a conta bancária para debitar o valor do aporte.')
+        return
+      }
     }
 
     setIsSubmitting(true)
@@ -364,6 +384,13 @@ export const Investments: React.FC = () => {
     orderType === 'sell' && custodyAveragePrice !== null && custodyAveragePrice > 0
       ? ((priceVal - custodyAveragePrice) / custodyAveragePrice) * 100
       : null
+
+  const selectedOrderAccount = accounts.find((a) => a.id === selectedAccountId)
+  const projectedAccountBalance = selectedOrderAccount
+    ? orderType === 'buy'
+      ? parseFloat(selectedOrderAccount.balance || '0') - totalOrderValue
+      : parseFloat(selectedOrderAccount.balance || '0') + totalOrderValue
+    : null
 
   return (
     <div className="space-y-8">
@@ -577,6 +604,7 @@ export const Investments: React.FC = () => {
                       <th className="pb-3 text-right">Taxas</th>
                       <th className="pb-3 text-right">Total Operação</th>
                       <th className="pb-3 text-right">Lucro/Prejuízo</th>
+                      <th className="pb-3">Conta</th>
                       <th className="pb-3">Notas</th>
                       <th className="pb-3 text-center">Ações</th>
                     </tr>
@@ -631,6 +659,18 @@ export const Investments: React.FC = () => {
                             ) : (
                               <span className="text-slate-600">-</span>
                             )}
+                          </td>
+                          <td className="py-3.5 text-xs text-slate-300">
+                            {(() => {
+                              const acc = accounts.find((a) => a.id === ord.account_id)
+                              return acc ? (
+                                <span className="inline-flex items-center px-2 py-0.5 rounded bg-slate-800/80 border border-slate-700/60 text-slate-300 text-[11px] font-medium">
+                                  {acc.name}
+                                </span>
+                              ) : (
+                                <span className="text-slate-600">-</span>
+                              )
+                            })()}
                           </td>
                           <td className="py-3.5 text-slate-400 text-[11px] max-w-[140px] truncate">
                             {ord.notes || <span className="text-slate-600 italic">Sem notas</span>}
@@ -949,24 +989,52 @@ export const Investments: React.FC = () => {
                 </div>
               </div>
 
-              {/* Optional Account Debit/Credit */}
-              {accounts.length > 0 && (
+              {/* Account Debit/Credit */}
+              {accounts.length === 0 ? (
+                <div className="p-3.5 bg-amber-500/10 border border-amber-500/30 rounded-xl text-xs text-amber-300 flex items-start gap-2.5">
+                  <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-amber-400" />
+                  <div>
+                    <span className="font-semibold block text-amber-200">Nenhuma conta bancária cadastrada</span>
+                    <span>
+                      Cadastre uma conta em <strong>Finanças</strong> para que o valor do aporte seja debitado do saldo.
+                    </span>
+                  </div>
+                </div>
+              ) : (
                 <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-slate-300 uppercase tracking-wider block">
-                    {orderType === 'buy' ? 'Debitar da Conta Bancária (Opcional)' : 'Creditar na Conta Bancária (Opcional)'}
-                  </label>
+                  <div className="flex justify-between items-center">
+                    <label className="text-xs font-semibold text-slate-300 uppercase tracking-wider block">
+                      {orderType === 'buy' ? 'Conta Bancária para Débito *' : 'Creditar na Conta Bancária (Opcional)'}
+                    </label>
+                    {selectedOrderAccount && (
+                      <span className="text-[11px] text-slate-400">
+                        Saldo atual: <span className="font-mono text-slate-200 font-semibold">{formatCurrency(selectedOrderAccount.balance, selectedOrderAccount.currency)}</span>
+                      </span>
+                    )}
+                  </div>
                   <select
                     value={selectedAccountId}
                     onChange={(e) => setSelectedAccountId(e.target.value)}
+                    required={orderType === 'buy'}
                     className="w-full px-3.5 py-2.5 bg-dark-950 border border-slate-800 rounded-xl text-xs text-slate-200 focus:outline-none focus:border-brand-500"
                   >
-                    <option value="">Não movimentar saldo em conta</option>
+                    {orderType === 'sell' && (
+                      <option value="">Não movimentar saldo em conta</option>
+                    )}
                     {accounts.map((acc) => (
                       <option key={acc.id} value={acc.id}>
-                        {acc.name} ({acc.institution}) - Saldo: {formatCurrency(acc.balance, acc.currency)}
+                        {acc.name} ({acc.institution}) — Saldo: {formatCurrency(acc.balance, acc.currency)}
                       </option>
                     ))}
                   </select>
+                  {orderType === 'buy' && selectedOrderAccount && totalOrderValue > 0 && projectedAccountBalance !== null && (
+                    <div className="text-[11px] bg-slate-900/70 p-2.5 rounded-xl border border-slate-800 flex justify-between items-center">
+                      <span className="text-slate-400">Saldo projetado após o aporte:</span>
+                      <span className={`font-mono font-bold ${projectedAccountBalance >= 0 ? 'text-emerald-400' : 'text-amber-400'}`}>
+                        {formatCurrency(projectedAccountBalance, selectedOrderAccount.currency)}
+                      </span>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -995,7 +1063,7 @@ export const Investments: React.FC = () => {
                 </button>
                 <button
                   type="submit"
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || (orderType === 'buy' && accounts.length === 0)}
                   className={`flex-1 py-3 text-white text-xs font-bold rounded-xl active:scale-95 transition-all shadow-lg disabled:opacity-50 ${
                     orderType === 'buy'
                       ? 'bg-gradient-to-r from-brand-500 to-emerald-600 hover:from-brand-600 hover:to-emerald-700 shadow-brand-500/25'

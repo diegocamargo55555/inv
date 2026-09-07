@@ -101,9 +101,14 @@ func (uc *InvestmentUseCase) ExecuteBuy(
 	// If account specified, deduct balance
 	if accountID != nil {
 		acc, err := uc.accRepo.GetByID(ctx, *accountID)
-		if err == nil && acc != nil && acc.UserID == userID {
-			_ = acc.ApplyTransaction(totalAmount, domain.TxTypeExpense)
-			_ = uc.accRepo.Update(ctx, acc)
+		if err != nil || acc == nil || acc.UserID != userID {
+			return nil, domain.ErrAccountNotFound
+		}
+		if err := acc.ApplyTransaction(totalAmount, domain.TxTypeExpense); err != nil {
+			return nil, err
+		}
+		if err := uc.accRepo.Update(ctx, acc); err != nil {
+			return nil, err
 		}
 	}
 
@@ -164,9 +169,14 @@ func (uc *InvestmentUseCase) ExecuteSell(
 	// If account specified, credit balance
 	if accountID != nil {
 		acc, err := uc.accRepo.GetByID(ctx, *accountID)
-		if err == nil && acc != nil && acc.UserID == userID {
-			_ = acc.ApplyTransaction(grossTotal, domain.TxTypeIncome)
-			_ = uc.accRepo.Update(ctx, acc)
+		if err != nil || acc == nil || acc.UserID != userID {
+			return nil, domain.ErrAccountNotFound
+		}
+		if err := acc.ApplyTransaction(grossTotal, domain.TxTypeIncome); err != nil {
+			return nil, err
+		}
+		if err := uc.accRepo.Update(ctx, acc); err != nil {
+			return nil, err
 		}
 	}
 
@@ -355,13 +365,20 @@ func (uc *InvestmentUseCase) UpdateOrder(
 	// Apply new account balance movement if applicable
 	if accountID != nil {
 		newAcc, err := uc.accRepo.GetByID(ctx, *accountID)
-		if err == nil && newAcc != nil && newAcc.UserID == userID {
-			if tx.Type == domain.InvestTxBuy {
-				_ = newAcc.ApplyTransaction(newTotal, domain.TxTypeExpense)
-			} else if tx.Type == domain.InvestTxSell {
-				_ = newAcc.ApplyTransaction(newTotal, domain.TxTypeIncome)
+		if err != nil || newAcc == nil || newAcc.UserID != userID {
+			return nil, domain.ErrAccountNotFound
+		}
+		if tx.Type == domain.InvestTxBuy {
+			if err := newAcc.ApplyTransaction(newTotal, domain.TxTypeExpense); err != nil {
+				return nil, err
 			}
-			_ = uc.accRepo.Update(ctx, newAcc)
+		} else if tx.Type == domain.InvestTxSell {
+			if err := newAcc.ApplyTransaction(newTotal, domain.TxTypeIncome); err != nil {
+				return nil, err
+			}
+		}
+		if err := uc.accRepo.Update(ctx, newAcc); err != nil {
+			return nil, err
 		}
 	}
 
