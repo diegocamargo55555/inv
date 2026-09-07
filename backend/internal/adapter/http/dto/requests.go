@@ -32,7 +32,7 @@ type CreateAccountRequest struct {
 }
 
 type CreateTransactionRequest struct {
-	AccountID    *uuid.UUID             `json:"account_id"`
+	AccountID    *uuid.UUID             `json:"account_id" binding:"required"`
 	CategoryID   *uuid.UUID             `json:"category_id"`
 	CreditCardID *uuid.UUID             `json:"credit_card_id"`
 	Type         domain.TransactionType `json:"type" binding:"required"`
@@ -93,7 +93,7 @@ type UpdateInvestmentOrderRequest struct {
 }
 
 type UpdateTransactionRequest struct {
-	AccountID   *uuid.UUID             `json:"account_id"`
+	AccountID   *uuid.UUID             `json:"account_id" binding:"required"`
 	CategoryID  *uuid.UUID             `json:"category_id"`
 	Type        domain.TransactionType `json:"type" binding:"required"`
 	Amount      decimal.Decimal        `json:"amount" binding:"required"`

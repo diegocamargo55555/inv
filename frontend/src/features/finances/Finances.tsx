@@ -87,12 +87,20 @@ export const Finances: React.FC = () => {
 
   const handleSaveTx = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!txAccId) {
+      alert(
+        accounts.length === 0
+          ? 'Você precisa cadastrar uma conta bancária antes de criar transações.'
+          : 'Por favor, selecione uma Conta de Débito/Crédito.'
+      )
+      return
+    }
     try {
       const payload = {
         description: txDesc,
         amount: parseFloat(txAmount),
         type: txType,
-        account_id: txAccId || null,
+        account_id: txAccId,
         category_id: txCatId || null,
         date: new Date(txDate).toISOString(),
       }
@@ -102,6 +110,44 @@ export const Finances: React.FC = () => {
         await api.post('/transactions', payload)
       }
       setIsTxModalOpen(false)
+      setTxDesc('')
+      setTxAmount('')
+      setTxAccId('')
+      setTxCatId('')
+      loadData()
+    } catch (err: any) {
+      alert(err.response?.data?.error || 'Erro ao criar transação')
+    }
+  }
+
+  const handleOpenEditTx = (tx: Transaction) => {
+    setEditingTx(tx)
+    setEditTxDesc(tx.description)
+    setEditTxAmount(tx.amount)
+    setEditTxType(tx.type === 'income' ? 'income' : 'expense')
+    setEditTxAccId(tx.account_id || '')
+    setEditTxCatId(tx.category_id || '')
+    setEditTxDate(tx.date ? tx.date.split('T')[0] : new Date().toISOString().split('T')[0])
+    setIsEditTxModalOpen(true)
+  }
+
+  const handleUpdateTx = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!editingTx) return
+    if (!editTxAccId) {
+      alert('Por favor, selecione uma Conta de Débito/Crédito.')
+      return
+    }
+    try {
+      await api.put(`/transactions/${editingTx.id}`, {
+        description: editTxDesc,
+        amount: parseFloat(editTxAmount),
+        type: editTxType,
+        account_id: editTxAccId,
+        category_id: editTxCatId || null,
+        date: new Date(editTxDate).toISOString(),
+      })
+      setIsEditTxModalOpen(false)
       setEditingTx(null)
       loadData()
     } catch (err: any) {
@@ -454,17 +500,27 @@ export const Finances: React.FC = () => {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs font-medium text-slate-300">Conta de Débito/Crédito</label>
+                  <label className="text-xs font-medium text-slate-300">
+                    Conta de Débito/Crédito <span className="text-red-400">*</span>
+                  </label>
                   <select
+                    required
                     value={txAccId}
                     onChange={(e) => setTxAccId(e.target.value)}
-                    className="w-full px-3 py-2 bg-dark-950 border border-slate-800 rounded-xl text-xs text-white"
+                    className="w-full px-3 py-2 bg-dark-950 border border-slate-800 rounded-xl text-xs text-white focus:outline-none focus:border-brand-500"
                   >
-                    <option value="">{editingTx ? 'Sem conta vinculada' : 'Selecione uma conta...'}</option>
+                    <option value="">Selecione uma conta...</option>
                     {accounts.map((acc) => (
-                      <option key={acc.id} value={acc.id}>{acc.name}</option>
+                      <option key={acc.id} value={acc.id}>
+                        {acc.name} ({displayVal(acc.balance)})
+                      </option>
                     ))}
                   </select>
+                  {accounts.length === 0 && (
+                    <p className="text-[11px] text-amber-400 mt-1">
+                      Nenhuma conta cadastrada. Crie uma conta antes de lançar.
+                    </p>
+                  )}
                 </div>
                 <div>
                   <label className="text-xs font-medium text-slate-300">Categoria</label>
@@ -623,6 +679,121 @@ export const Finances: React.FC = () => {
                   className="flex-1 py-2 bg-brand-500 hover:bg-brand-600 text-white text-xs font-semibold rounded-xl"
                 >
                   Salvar Teto
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Transaction Modal */}
+      {isEditTxModalOpen && editingTx && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-dark-900 border border-slate-800 rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4">
+            <h3 className="text-lg font-bold text-white flex items-center gap-2">
+              <Pencil className="w-4 h-4 text-brand-400" />
+              <span>Editar Lançamento</span>
+            </h3>
+            <form onSubmit={handleUpdateTx} className="space-y-4">
+              <div className="grid grid-cols-2 gap-2 p-1 bg-dark-950 rounded-xl border border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setEditTxType('expense')}
+                  className={`py-1.5 rounded-lg text-xs font-semibold ${editTxType === 'expense' ? 'bg-red-500 text-white' : 'text-slate-400'}`}
+                >
+                  Despesa / Compra
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEditTxType('income')}
+                  className={`py-1.5 rounded-lg text-xs font-semibold ${editTxType === 'income' ? 'bg-emerald-500 text-white' : 'text-slate-400'}`}
+                >
+                  Receita / Venda
+                </button>
+              </div>
+
+              <div>
+                <label className="text-xs font-medium text-slate-300">Descrição</label>
+                <input
+                  type="text"
+                  required
+                  value={editTxDesc}
+                  onChange={(e) => setEditTxDesc(e.target.value)}
+                  className="w-full px-3 py-2 bg-dark-950 border border-slate-800 rounded-xl text-xs text-white"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-medium text-slate-300">Valor (R$)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    required
+                    value={editTxAmount}
+                    onChange={(e) => setEditTxAmount(e.target.value)}
+                    className="w-full px-3 py-2 bg-dark-950 border border-slate-800 rounded-xl text-xs text-white"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-slate-300">Data</label>
+                  <input
+                    type="date"
+                    required
+                    value={editTxDate}
+                    onChange={(e) => setEditTxDate(e.target.value)}
+                    className="w-full px-3 py-2 bg-dark-950 border border-slate-800 rounded-xl text-xs text-white"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-medium text-slate-300">
+                    Conta de Débito/Crédito <span className="text-red-400">*</span>
+                  </label>
+                  <select
+                    required
+                    value={editTxAccId}
+                    onChange={(e) => setEditTxAccId(e.target.value)}
+                    className="w-full px-3 py-2 bg-dark-950 border border-slate-800 rounded-xl text-xs text-white focus:outline-none focus:border-brand-500"
+                  >
+                    <option value="">Selecione uma conta...</option>
+                    {accounts.map((acc) => (
+                      <option key={acc.id} value={acc.id}>
+                        {acc.name} ({displayVal(acc.balance)})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-slate-300">Categoria</label>
+                  <select
+                    value={editTxCatId}
+                    onChange={(e) => setEditTxCatId(e.target.value)}
+                    className="w-full px-3 py-2 bg-dark-950 border border-slate-800 rounded-xl text-xs text-white"
+                  >
+                    <option value="">Sem categoria</option>
+                    {categories.filter((c) => c.type === editTxType).map((c) => (
+                      <option key={c.id} value={c.id}>{c.name}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setIsEditTxModalOpen(false)}
+                  className="flex-1 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold rounded-xl"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 py-2 bg-brand-500 hover:bg-brand-600 text-white text-xs font-semibold rounded-xl"
+                >
+                  Salvar Alterações
                 </button>
               </div>
             </form>

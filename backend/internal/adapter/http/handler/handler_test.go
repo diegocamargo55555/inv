@@ -173,6 +173,38 @@ func TestHTTPHandlers_FinanceAndCards(t *testing.T) {
 		assert.Contains(t, w.Body.String(), "Freelance Editado")
 	})
 
+	t.Run("POST /api/v1/transactions returns 400 when AccountID is missing", func(t *testing.T) {
+		body, _ := json.Marshal(map[string]any{
+			"type":        domain.TxTypeIncome,
+			"amount":      100.0,
+			"date":        time.Now(),
+			"description": "Sem conta",
+		})
+		req := httptest.NewRequest(http.MethodPost, "/api/v1/transactions", bytes.NewBuffer(body))
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Authorization", authHeader)
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusBadRequest, w.Code)
+	})
+
+	t.Run("PUT /api/v1/transactions/:id returns 400 when AccountID is missing", func(t *testing.T) {
+		body, _ := json.Marshal(map[string]any{
+			"type":        domain.TxTypeIncome,
+			"amount":      100.0,
+			"date":        time.Now(),
+			"description": "Edit sem conta",
+		})
+		req := httptest.NewRequest(http.MethodPut, "/api/v1/transactions/"+createdTxID, bytes.NewBuffer(body))
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Authorization", authHeader)
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusBadRequest, w.Code)
+	})
+
 	t.Run("GET /api/v1/transactions lists transactions", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, "/api/v1/transactions", nil)
 		req.Header.Set("Authorization", authHeader)

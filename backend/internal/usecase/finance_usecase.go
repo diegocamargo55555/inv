@@ -71,24 +71,21 @@ func (uc *FinanceUseCase) CreateTransaction(
 		return nil, domain.ErrInvalidAmount
 	}
 
-	var account *domain.Account
-	if accountID != nil {
-		acc, err := uc.accRepo.GetByID(ctx, *accountID)
-		if err != nil || acc == nil {
-			return nil, domain.ErrAccountNotFound
-		}
-		if acc.UserID != userID {
-			return nil, domain.ErrAccountNotFound
-		}
-		account = acc
+	if accountID == nil || *accountID == uuid.Nil {
+		return nil, domain.ErrAccountRequired
+	}
 
-		// Update balance
-		if err := account.ApplyTransaction(amount, txType); err != nil {
-			return nil, err
-		}
-		if err := uc.accRepo.Update(ctx, account); err != nil {
-			return nil, err
-		}
+	acc, err := uc.accRepo.GetByID(ctx, *accountID)
+	if err != nil || acc == nil || acc.UserID != userID {
+		return nil, domain.ErrAccountNotFound
+	}
+
+	// Update balance
+	if err := acc.ApplyTransaction(amount, txType); err != nil {
+		return nil, err
+	}
+	if err := uc.accRepo.Update(ctx, acc); err != nil {
+		return nil, err
 	}
 
 	tx := &domain.Transaction{
@@ -237,9 +234,19 @@ func (uc *FinanceUseCase) UpdateTransaction(
 		return nil, domain.ErrInvalidAmount
 	}
 
+	if accountID == nil || *accountID == uuid.Nil {
+		return nil, domain.ErrAccountRequired
+	}
+
 	tx, err := uc.txRepo.GetByID(ctx, txID)
 	if err != nil || tx == nil || tx.UserID != userID {
 		return nil, domain.ErrTransactionNotFound
+	}
+
+	// Verify target account exists and belongs to user
+	newAcc, err := uc.accRepo.GetByID(ctx, *accountID)
+	if err != nil || newAcc == nil || newAcc.UserID != userID {
+		return nil, domain.ErrAccountNotFound
 	}
 
 	// Revert old transaction amount on old account
@@ -255,6 +262,19 @@ func (uc *FinanceUseCase) UpdateTransaction(
 		}
 	}
 
+	// If old and new account are the same, reload newAcc so we do not overwrite reverted balance with stale state
+	if tx.AccountID != nil && *tx.AccountID == *accountID {
+		newAcc, _ = uc.accRepo.GetByID(ctx, *accountID)
+	}
+
+	// Apply new transaction amount on new account
+	if err := newAcc.ApplyTransaction(amount, txType); err != nil {
+		return nil, err
+	}
+	if err := uc.accRepo.Update(ctx, newAcc); err != nil {
+		return nil, err
+	}
+
 	tx.AccountID = accountID
 	tx.CategoryID = categoryID
 	tx.Type = txType
@@ -267,16 +287,6 @@ func (uc *FinanceUseCase) UpdateTransaction(
 
 	if err := uc.txRepo.Update(ctx, tx); err != nil {
 		return nil, err
-	}
-
-	// Apply new transaction amount on new account
-	if accountID != nil {
-		newAcc, err := uc.accRepo.GetByID(ctx, *accountID)
-		if err == nil && newAcc != nil && newAcc.UserID == userID {
-			if err := newAcc.ApplyTransaction(amount, txType); err == nil {
-				_ = uc.accRepo.Update(ctx, newAcc)
-			}
-		}
 	}
 
 	return uc.txRepo.GetByID(ctx, txID)
