@@ -6,14 +6,14 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/invest/backend/internal/domain"
-	"github.com/invest/backend/pkg/hash"
 	"github.com/invest/backend/pkg/token"
+	"golang.org/x/crypto/bcrypt"
 )
 
 type AuthUseCase struct {
 	userRepo      UserRepository
 	portfolioRepo PortfolioRepository
-	tokenMaker    token.Maker
+	tokenMaker    *token.JWTMaker
 	accessExpiry  time.Duration
 	refreshExpiry time.Duration
 }
@@ -21,7 +21,7 @@ type AuthUseCase struct {
 func NewAuthUseCase(
 	userRepo UserRepository,
 	portfolioRepo PortfolioRepository,
-	tokenMaker token.Maker,
+	tokenMaker *token.JWTMaker,
 	accessExpiry time.Duration,
 	refreshExpiry time.Duration,
 ) *AuthUseCase {
@@ -46,10 +46,11 @@ func (uc *AuthUseCase) Register(ctx context.Context, name, email, password strin
 		return nil, domain.ErrUserAlreadyExists
 	}
 
-	hashedPassword, err := hash.HashPassword(password)
+	hashedBytes, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
 		return nil, err
 	}
+	hashedPassword := string(hashedBytes)
 
 	user := &domain.User{
 		ID:           uuid.New(),
@@ -86,7 +87,7 @@ func (uc *AuthUseCase) Login(ctx context.Context, email, password string) (*Auth
 		return nil, domain.ErrInvalidCredentials
 	}
 
-	if err := hash.CheckPassword(password, user.PasswordHash); err != nil {
+	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(password)); err != nil {
 		return nil, domain.ErrInvalidCredentials
 	}
 

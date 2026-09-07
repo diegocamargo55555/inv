@@ -11,13 +11,11 @@ import (
 
 type CreditCardUseCase struct {
 	cardRepo CreditCardRepository
-	catRepo  CategoryRepository
 }
 
-func NewCreditCardUseCase(cardRepo CreditCardRepository, catRepo CategoryRepository) *CreditCardUseCase {
+func NewCreditCardUseCase(cardRepo CreditCardRepository) *CreditCardUseCase {
 	return &CreditCardUseCase{
 		cardRepo: cardRepo,
-		catRepo:  catRepo,
 	}
 }
 

@@ -11,7 +11,7 @@ import (
 )
 
 type RouterConfig struct {
-	TokenMaker        token.Maker
+	TokenMaker        *token.JWTMaker
 	AuthHandler       *handler.AuthHandler
 	FinanceHandler    *handler.FinanceHandler
 	CreditCardHandler *handler.CreditCardHandler

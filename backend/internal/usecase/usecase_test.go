@@ -463,7 +463,7 @@ func TestFinanceUseCase_Full(t *testing.T) {
 	catRepo := newMockCategoryRepo()
 	budgetRepo := newMockBudgetRepo()
 
-	uc := usecase.NewFinanceUseCase(accRepo, txRepo, catRepo, budgetRepo)
+	uc := usecase.NewFinanceUseCase(accRepo, txRepo, budgetRepo)
 	ctx := context.Background()
 	userID := uuid.New()
 
@@ -517,8 +517,7 @@ func TestFinanceUseCase_Full(t *testing.T) {
 
 func TestCreditCardUseCase_Full(t *testing.T) {
 	cardRepo := newMockCardRepo()
-	catRepo := newMockCategoryRepo()
-	uc := usecase.NewCreditCardUseCase(cardRepo, catRepo)
+	uc := usecase.NewCreditCardUseCase(cardRepo)
 	ctx := context.Background()
 	userID := uuid.New()
 
@@ -731,10 +730,9 @@ func TestInvestmentUseCase_EditAndRecalculate(t *testing.T) {
 func TestFinanceUseCase_UpdateAndDeleteTransaction(t *testing.T) {
 	accRepo := newMockAccountRepo()
 	txRepo := newMockTxRepo()
-	catRepo := newMockCategoryRepo()
 	budgetRepo := newMockBudgetRepo()
 
-	uc := usecase.NewFinanceUseCase(accRepo, txRepo, catRepo, budgetRepo)
+	uc := usecase.NewFinanceUseCase(accRepo, txRepo, budgetRepo)
 	ctx := context.Background()
 	userID := uuid.New()
 

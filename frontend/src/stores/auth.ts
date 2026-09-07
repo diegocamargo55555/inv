@@ -1,25 +1,6 @@
 import { create } from 'zustand'
+import { persist, createJSONStorage } from 'zustand/middleware'
 import { User } from '../types'
-
-const storage = {
-  get: (key: string) => {
-    try {
-      return typeof window !== 'undefined' ? localStorage.getItem(key) : null
-    } catch {
-      return null
-    }
-  },
-  set: (key: string, val: string) => {
-    try {
-      if (typeof window !== 'undefined') localStorage.setItem(key, val)
-    } catch {}
-  },
-  remove: (key: string) => {
-    try {
-      if (typeof window !== 'undefined') localStorage.removeItem(key)
-    } catch {}
-  },
-}
 
 interface AuthState {
   user: User | null
@@ -31,29 +12,36 @@ interface AuthState {
   logout: () => void
 }
 
-export const useAuthStore = create<AuthState>((set) => ({
-  user: JSON.parse(storage.get('inv_user') || 'null'),
-  accessToken: storage.get('inv_access_token'),
-  refreshToken: storage.get('inv_refresh_token'),
-  isAuthenticated: !!storage.get('inv_access_token'),
-
-  setAuth: (user, accessToken, refreshToken) => {
-    storage.set('inv_user', JSON.stringify(user))
-    storage.set('inv_access_token', accessToken)
-    storage.set('inv_refresh_token', refreshToken)
-    set({ user, accessToken, refreshToken, isAuthenticated: true })
+const safeStorage = createJSONStorage(() => ({
+  getItem: (key: string) => (typeof window !== 'undefined' ? localStorage.getItem(key) : null),
+  setItem: (key: string, val: string) => {
+    if (typeof window !== 'undefined') localStorage.setItem(key, val)
   },
-
-  setTokens: (accessToken, refreshToken) => {
-    storage.set('inv_access_token', accessToken)
-    storage.set('inv_refresh_token', refreshToken)
-    set({ accessToken, refreshToken, isAuthenticated: true })
-  },
-
-  logout: () => {
-    storage.remove('inv_user')
-    storage.remove('inv_access_token')
-    storage.remove('inv_refresh_token')
-    set({ user: null, accessToken: null, refreshToken: null, isAuthenticated: false })
+  removeItem: (key: string) => {
+    if (typeof window !== 'undefined') localStorage.removeItem(key)
   },
 }))
+
+export const useAuthStore = create<AuthState>()(
+  persist(
+    (set) => ({
+      user: null,
+      accessToken: null,
+      refreshToken: null,
+      isAuthenticated: false,
+
+      setAuth: (user, accessToken, refreshToken) =>
+        set({ user, accessToken, refreshToken, isAuthenticated: true }),
+
+      setTokens: (accessToken, refreshToken) =>
+        set({ accessToken, refreshToken, isAuthenticated: true }),
+
+      logout: () =>
+        set({ user: null, accessToken: null, refreshToken: null, isAuthenticated: false }),
+    }),
+    {
+      name: 'inv_auth',
+      storage: safeStorage,
+    }
+  )
+)

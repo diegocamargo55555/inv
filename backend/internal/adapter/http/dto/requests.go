@@ -69,7 +69,7 @@ type SetBudgetRequest struct {
 	AmountLimit decimal.Decimal `json:"amount_limit" binding:"required"`
 }
 
-type ExecuteBuyOrderRequest struct {
+type ExecuteOrderRequest struct {
 	PortfolioID uuid.UUID       `json:"portfolio_id" binding:"required"`
 	AssetID     uuid.UUID       `json:"asset_id" binding:"required"`
 	AccountID   *uuid.UUID      `json:"account_id"`
@@ -80,16 +80,8 @@ type ExecuteBuyOrderRequest struct {
 	Notes       string          `json:"notes"`
 }
 
-type ExecuteSellOrderRequest struct {
-	PortfolioID uuid.UUID       `json:"portfolio_id" binding:"required"`
-	AssetID     uuid.UUID       `json:"asset_id" binding:"required"`
-	AccountID   *uuid.UUID      `json:"account_id"`
-	Quantity    decimal.Decimal `json:"quantity" binding:"required"`
-	UnitPrice   decimal.Decimal `json:"unit_price" binding:"required"`
-	Fees        decimal.Decimal `json:"fees"`
-	Date        time.Time       `json:"date" binding:"required"`
-	Notes       string          `json:"notes"`
-}
+type ExecuteBuyOrderRequest = ExecuteOrderRequest
+type ExecuteSellOrderRequest = ExecuteOrderRequest
 
 type UpdateInvestmentOrderRequest struct {
 	AccountID *uuid.UUID      `json:"account_id"`

@@ -18,26 +18,17 @@ export const Finances: React.FC = () => {
 
   // Modals state
   const [isTxModalOpen, setIsTxModalOpen] = useState(false)
-  const [isEditTxModalOpen, setIsEditTxModalOpen] = useState(false)
   const [editingTx, setEditingTx] = useState<Transaction | null>(null)
   const [isAccModalOpen, setIsAccModalOpen] = useState(false)
   const [isBudgetModalOpen, setIsBudgetModalOpen] = useState(false)
 
-  // New Tx Form
+  // Transaction Form (Shared for Create & Edit)
   const [txDesc, setTxDesc] = useState('')
   const [txAmount, setTxAmount] = useState('')
   const [txType, setTxType] = useState<'income' | 'expense'>('expense')
   const [txAccId, setTxAccId] = useState('')
   const [txCatId, setTxCatId] = useState('')
   const [txDate, setTxDate] = useState(new Date().toISOString().split('T')[0])
-
-  // Edit Tx Form
-  const [editTxDesc, setEditTxDesc] = useState('')
-  const [editTxAmount, setEditTxAmount] = useState('')
-  const [editTxType, setEditTxType] = useState<'income' | 'expense'>('expense')
-  const [editTxAccId, setEditTxAccId] = useState('')
-  const [editTxCatId, setEditTxCatId] = useState('')
-  const [editTxDate, setEditTxDate] = useState('')
 
   // New Account Form
   const [accName, setAccName] = useState('')
@@ -72,54 +63,49 @@ export const Finances: React.FC = () => {
     loadData()
   }, [])
 
-  const handleCreateTx = async (e: React.FormEvent) => {
+  const handleOpenCreateTx = () => {
+    setEditingTx(null)
+    setTxDesc('')
+    setTxAmount('')
+    setTxType('expense')
+    setTxAccId(accounts.length > 0 ? accounts[0].id : '')
+    setTxCatId('')
+    setTxDate(new Date().toISOString().split('T')[0])
+    setIsTxModalOpen(true)
+  }
+
+  const handleOpenEditTx = (tx: Transaction) => {
+    setEditingTx(tx)
+    setTxDesc(tx.description)
+    setTxAmount(tx.amount)
+    setTxType(tx.type === 'income' ? 'income' : 'expense')
+    setTxAccId(tx.account_id || '')
+    setTxCatId(tx.category_id || '')
+    setTxDate(tx.date ? tx.date.split('T')[0] : new Date().toISOString().split('T')[0])
+    setIsTxModalOpen(true)
+  }
+
+  const handleSaveTx = async (e: React.FormEvent) => {
     e.preventDefault()
     try {
-      await api.post('/transactions', {
+      const payload = {
         description: txDesc,
         amount: parseFloat(txAmount),
         type: txType,
         account_id: txAccId || null,
         category_id: txCatId || null,
         date: new Date(txDate).toISOString(),
-      })
+      }
+      if (editingTx) {
+        await api.put(`/transactions/${editingTx.id}`, payload)
+      } else {
+        await api.post('/transactions', payload)
+      }
       setIsTxModalOpen(false)
-      setTxDesc('')
-      setTxAmount('')
-      loadData()
-    } catch (err) {
-      alert('Erro ao criar transação')
-    }
-  }
-
-  const handleOpenEditTx = (tx: Transaction) => {
-    setEditingTx(tx)
-    setEditTxDesc(tx.description)
-    setEditTxAmount(tx.amount)
-    setEditTxType(tx.type === 'income' ? 'income' : 'expense')
-    setEditTxAccId(tx.account_id || '')
-    setEditTxCatId(tx.category_id || '')
-    setEditTxDate(tx.date ? tx.date.split('T')[0] : new Date().toISOString().split('T')[0])
-    setIsEditTxModalOpen(true)
-  }
-
-  const handleUpdateTx = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!editingTx) return
-    try {
-      await api.put(`/transactions/${editingTx.id}`, {
-        description: editTxDesc,
-        amount: parseFloat(editTxAmount),
-        type: editTxType,
-        account_id: editTxAccId || null,
-        category_id: editTxCatId || null,
-        date: new Date(editTxDate).toISOString(),
-      })
-      setIsEditTxModalOpen(false)
       setEditingTx(null)
       loadData()
     } catch (err: any) {
-      alert(err.response?.data?.error || 'Erro ao atualizar transação')
+      alert(err.response?.data?.error || 'Erro ao salvar transação')
     }
   }
 
@@ -195,7 +181,7 @@ export const Finances: React.FC = () => {
             <span>Nova Conta</span>
           </button>
           <button
-            onClick={() => setIsTxModalOpen(true)}
+            onClick={handleOpenCreateTx}
             className="px-4 py-2 bg-brand-500 hover:bg-brand-600 active:scale-95 text-white text-xs font-semibold rounded-xl shadow-lg shadow-brand-500/20 flex items-center gap-1.5 transition-all"
           >
             <Plus className="w-4 h-4" />
@@ -407,22 +393,25 @@ export const Finances: React.FC = () => {
       {isTxModalOpen && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-dark-900 border border-slate-800 rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4">
-            <h3 className="text-lg font-bold text-white">Novo Lançamento</h3>
-            <form onSubmit={handleCreateTx} className="space-y-4">
+            <h3 className="text-lg font-bold text-white flex items-center gap-2">
+              {editingTx && <Pencil className="w-4 h-4 text-brand-400" />}
+              <span>{editingTx ? 'Editar Lançamento' : 'Novo Lançamento'}</span>
+            </h3>
+            <form onSubmit={handleSaveTx} className="space-y-4">
               <div className="grid grid-cols-2 gap-2 p-1 bg-dark-950 rounded-xl border border-slate-800">
                 <button
                   type="button"
                   onClick={() => setTxType('expense')}
                   className={`py-1.5 rounded-lg text-xs font-semibold ${txType === 'expense' ? 'bg-red-500 text-white' : 'text-slate-400'}`}
                 >
-                  Despesa
+                  Despesa {editingTx && '/ Compra'}
                 </button>
                 <button
                   type="button"
                   onClick={() => setTxType('income')}
                   className={`py-1.5 rounded-lg text-xs font-semibold ${txType === 'income' ? 'bg-emerald-500 text-white' : 'text-slate-400'}`}
                 >
-                  Receita
+                  Receita {editingTx && '/ Venda'}
                 </button>
               </div>
 
@@ -471,6 +460,7 @@ export const Finances: React.FC = () => {
                     onChange={(e) => setTxAccId(e.target.value)}
                     className="w-full px-3 py-2 bg-dark-950 border border-slate-800 rounded-xl text-xs text-white"
                   >
+                    <option value="">{editingTx ? 'Sem conta vinculada' : 'Selecione uma conta...'}</option>
                     {accounts.map((acc) => (
                       <option key={acc.id} value={acc.id}>{acc.name}</option>
                     ))}
@@ -483,7 +473,7 @@ export const Finances: React.FC = () => {
                     onChange={(e) => setTxCatId(e.target.value)}
                     className="w-full px-3 py-2 bg-dark-950 border border-slate-800 rounded-xl text-xs text-white"
                   >
-                    <option value="">Selecione uma categoria...</option>
+                    <option value="">{editingTx ? 'Sem categoria' : 'Selecione uma categoria...'}</option>
                     {categories.filter((c) => c.type === txType).map((c) => (
                       <option key={c.id} value={c.id}>{c.name}</option>
                     ))}
@@ -503,7 +493,7 @@ export const Finances: React.FC = () => {
                   type="submit"
                   className="flex-1 py-2 bg-brand-500 hover:bg-brand-600 text-white text-xs font-semibold rounded-xl"
                 >
-                  Salvar Lançamento
+                  {editingTx ? 'Salvar Alterações' : 'Salvar Lançamento'}
                 </button>
               </div>
             </form>
@@ -633,116 +623,6 @@ export const Finances: React.FC = () => {
                   className="flex-1 py-2 bg-brand-500 hover:bg-brand-600 text-white text-xs font-semibold rounded-xl"
                 >
                   Salvar Teto
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Edit Transaction Modal */}
-      {isEditTxModalOpen && editingTx && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-dark-900 border border-slate-800 rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4">
-            <h3 className="text-lg font-bold text-white flex items-center gap-2">
-              <Pencil className="w-4 h-4 text-brand-400" />
-              <span>Editar Lançamento</span>
-            </h3>
-            <form onSubmit={handleUpdateTx} className="space-y-4">
-              <div className="grid grid-cols-2 gap-2 p-1 bg-dark-950 rounded-xl border border-slate-800">
-                <button
-                  type="button"
-                  onClick={() => setEditTxType('expense')}
-                  className={`py-1.5 rounded-lg text-xs font-semibold ${editTxType === 'expense' ? 'bg-red-500 text-white' : 'text-slate-400'}`}
-                >
-                  Despesa / Compra
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setEditTxType('income')}
-                  className={`py-1.5 rounded-lg text-xs font-semibold ${editTxType === 'income' ? 'bg-emerald-500 text-white' : 'text-slate-400'}`}
-                >
-                  Receita / Venda
-                </button>
-              </div>
-
-              <div>
-                <label className="text-xs font-medium text-slate-300">Descrição</label>
-                <input
-                  type="text"
-                  required
-                  value={editTxDesc}
-                  onChange={(e) => setEditTxDesc(e.target.value)}
-                  className="w-full px-3 py-2 bg-dark-950 border border-slate-800 rounded-xl text-xs text-white"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs font-medium text-slate-300">Valor (R$)</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    required
-                    value={editTxAmount}
-                    onChange={(e) => setEditTxAmount(e.target.value)}
-                    className="w-full px-3 py-2 bg-dark-950 border border-slate-800 rounded-xl text-xs text-white"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs font-medium text-slate-300">Data</label>
-                  <input
-                    type="date"
-                    required
-                    value={editTxDate}
-                    onChange={(e) => setEditTxDate(e.target.value)}
-                    className="w-full px-3 py-2 bg-dark-950 border border-slate-800 rounded-xl text-xs text-white"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs font-medium text-slate-300">Conta de Débito/Crédito</label>
-                  <select
-                    value={editTxAccId}
-                    onChange={(e) => setEditTxAccId(e.target.value)}
-                    className="w-full px-3 py-2 bg-dark-950 border border-slate-800 rounded-xl text-xs text-white"
-                  >
-                    <option value="">Sem conta vinculada</option>
-                    {accounts.map((acc) => (
-                      <option key={acc.id} value={acc.id}>{acc.name}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="text-xs font-medium text-slate-300">Categoria</label>
-                  <select
-                    value={editTxCatId}
-                    onChange={(e) => setEditTxCatId(e.target.value)}
-                    className="w-full px-3 py-2 bg-dark-950 border border-slate-800 rounded-xl text-xs text-white"
-                  >
-                    <option value="">Sem categoria</option>
-                    {categories.filter((c) => c.type === editTxType).map((c) => (
-                      <option key={c.id} value={c.id}>{c.name}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div className="flex gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setIsEditTxModalOpen(false)}
-                  className="flex-1 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold rounded-xl"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  className="flex-1 py-2 bg-brand-500 hover:bg-brand-600 text-white text-xs font-semibold rounded-xl"
-                >
-                  Salvar Alterações
                 </button>
               </div>
             </form>

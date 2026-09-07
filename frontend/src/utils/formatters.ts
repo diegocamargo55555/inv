@@ -30,19 +30,14 @@ export function formatPercentage(value: number | string): string {
 }
 
 export function formatInvoiceMonth(monthYear: string): string {
-  // e.g. "2026-03" -> "Mar/2026"
-  const parts = monthYear.split('-')
-  if (parts.length !== 2) return monthYear
+  const [year, month] = monthYear.split('-')
+  if (!year || !month) return monthYear
 
-  const year = parts[0]
-  const monthNum = parseInt(parts[1], 10)
-  const monthNames = [
-    'Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun',
-    'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'
-  ]
+  const date = new Date(Date.UTC(Number(year), Number(month) - 1, 1))
+  if (isNaN(date.getTime())) return monthYear
 
-  if (monthNum >= 1 && monthNum <= 12) {
-    return `${monthNames[monthNum - 1]}/${year}`
-  }
-  return monthYear
+  const rawMonth = date.toLocaleDateString('pt-BR', { month: 'short', timeZone: 'UTC' })
+  const cleanMonth = rawMonth.replace('.', '').slice(0, 3)
+  const capitalized = cleanMonth.charAt(0).toUpperCase() + cleanMonth.slice(1)
+  return `${capitalized}/${year}`
 }

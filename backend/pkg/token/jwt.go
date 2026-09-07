@@ -10,19 +10,16 @@ import (
 
 const minSecretKeySize = 32
 
-// Maker is an interface for managing tokens
-type Maker interface {
-	CreateToken(userID uuid.UUID, email string, tokenType TokenType, duration time.Duration) (string, *Payload, error)
-	VerifyToken(token string) (*Payload, error)
-}
-
 // JWTMaker is a JSON Web Token maker
 type JWTMaker struct {
 	secretKey string
 }
 
+// Maker is an alias to JWTMaker
+type Maker = JWTMaker
+
 // NewJWTMaker creates a new JWTMaker
-func NewJWTMaker(secretKey string) Maker {
+func NewJWTMaker(secretKey string) *JWTMaker {
 	return &JWTMaker{secretKey: secretKey}
 }
 
