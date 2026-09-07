@@ -768,4 +768,14 @@ func TestFinanceUseCase_UpdateAndDeleteTransaction(t *testing.T) {
 		accReverted, _ := accRepo.GetByID(ctx, acc.ID)
 		assert.True(t, accReverted.Balance.Equal(decimal.NewFromFloat(2000.00)))
 	})
+
+	t.Run("create transaction requires account ID", func(t *testing.T) {
+		_, err := uc.CreateTransaction(ctx, userID, nil, nil, domain.TxTypeIncome, decimal.NewFromFloat(100.00), date, "Sem Conta", "", "")
+		assert.ErrorIs(t, err, domain.ErrAccountRequired)
+	})
+
+	t.Run("update transaction requires account ID", func(t *testing.T) {
+		_, err := uc.UpdateTransaction(ctx, userID, tx.ID, nil, nil, domain.TxTypeExpense, decimal.NewFromFloat(100.00), date, "Edit Sem Conta", "", "")
+		assert.ErrorIs(t, err, domain.ErrAccountRequired)
+	})
 }

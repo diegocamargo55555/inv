@@ -86,6 +86,11 @@ func (h *FinanceHandler) CreateTransaction(c *gin.Context) {
 		return
 	}
 
+	if req.AccountID == nil || *req.AccountID == uuid.Nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": domain.ErrAccountRequired.Error()})
+		return
+	}
+
 	tx, err := h.financeUC.CreateTransaction(
 		c.Request.Context(),
 		userID,
@@ -252,6 +257,11 @@ func (h *FinanceHandler) UpdateTransaction(c *gin.Context) {
 	var req dto.UpdateTransactionRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if req.AccountID == nil || *req.AccountID == uuid.Nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": domain.ErrAccountRequired.Error()})
 		return
 	}
 

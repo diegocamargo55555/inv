@@ -74,21 +74,31 @@ export const Finances: React.FC = () => {
 
   const handleCreateTx = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!txAccId) {
+      alert(
+        accounts.length === 0
+          ? 'Você precisa cadastrar uma conta bancária antes de criar transações.'
+          : 'Por favor, selecione uma Conta de Débito/Crédito.'
+      )
+      return
+    }
     try {
       await api.post('/transactions', {
         description: txDesc,
         amount: parseFloat(txAmount),
         type: txType,
-        account_id: txAccId || null,
+        account_id: txAccId,
         category_id: txCatId || null,
         date: new Date(txDate).toISOString(),
       })
       setIsTxModalOpen(false)
       setTxDesc('')
       setTxAmount('')
+      setTxAccId('')
+      setTxCatId('')
       loadData()
-    } catch (err) {
-      alert('Erro ao criar transação')
+    } catch (err: any) {
+      alert(err.response?.data?.error || 'Erro ao criar transação')
     }
   }
 
@@ -106,12 +116,16 @@ export const Finances: React.FC = () => {
   const handleUpdateTx = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!editingTx) return
+    if (!editTxAccId) {
+      alert('Por favor, selecione uma Conta de Débito/Crédito.')
+      return
+    }
     try {
       await api.put(`/transactions/${editingTx.id}`, {
         description: editTxDesc,
         amount: parseFloat(editTxAmount),
         type: editTxType,
-        account_id: editTxAccId || null,
+        account_id: editTxAccId,
         category_id: editTxCatId || null,
         date: new Date(editTxDate).toISOString(),
       })
@@ -465,16 +479,27 @@ export const Finances: React.FC = () => {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs font-medium text-slate-300">Conta de Débito/Crédito</label>
+                  <label className="text-xs font-medium text-slate-300">
+                    Conta de Débito/Crédito <span className="text-red-400">*</span>
+                  </label>
                   <select
+                    required
                     value={txAccId}
                     onChange={(e) => setTxAccId(e.target.value)}
-                    className="w-full px-3 py-2 bg-dark-950 border border-slate-800 rounded-xl text-xs text-white"
+                    className="w-full px-3 py-2 bg-dark-950 border border-slate-800 rounded-xl text-xs text-white focus:outline-none focus:border-brand-500"
                   >
+                    <option value="">Selecione uma conta...</option>
                     {accounts.map((acc) => (
-                      <option key={acc.id} value={acc.id}>{acc.name}</option>
+                      <option key={acc.id} value={acc.id}>
+                        {acc.name} ({displayVal(acc.balance)})
+                      </option>
                     ))}
                   </select>
+                  {accounts.length === 0 && (
+                    <p className="text-[11px] text-amber-400 mt-1">
+                      Nenhuma conta cadastrada. Crie uma conta antes de lançar.
+                    </p>
+                  )}
                 </div>
                 <div>
                   <label className="text-xs font-medium text-slate-300">Categoria</label>
@@ -703,15 +728,20 @@ export const Finances: React.FC = () => {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs font-medium text-slate-300">Conta de Débito/Crédito</label>
+                  <label className="text-xs font-medium text-slate-300">
+                    Conta de Débito/Crédito <span className="text-red-400">*</span>
+                  </label>
                   <select
+                    required
                     value={editTxAccId}
                     onChange={(e) => setEditTxAccId(e.target.value)}
-                    className="w-full px-3 py-2 bg-dark-950 border border-slate-800 rounded-xl text-xs text-white"
+                    className="w-full px-3 py-2 bg-dark-950 border border-slate-800 rounded-xl text-xs text-white focus:outline-none focus:border-brand-500"
                   >
-                    <option value="">Sem conta vinculada</option>
+                    <option value="">Selecione uma conta...</option>
                     {accounts.map((acc) => (
-                      <option key={acc.id} value={acc.id}>{acc.name}</option>
+                      <option key={acc.id} value={acc.id}>
+                        {acc.name} ({displayVal(acc.balance)})
+                      </option>
                     ))}
                   </select>
                 </div>

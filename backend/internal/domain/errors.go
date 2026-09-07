@@ -7,6 +7,7 @@ var (
 	ErrUserAlreadyExists        = errors.New("usuário com este e-mail já cadastrado")
 	ErrInvalidCredentials       = errors.New("e-mail ou senha inválidos")
 	ErrInvalidAmount            = errors.New("valor da transação deve ser positivo")
+	ErrAccountRequired          = errors.New("conta bancária é obrigatória para esta transação")
 	ErrAccountNotFound          = errors.New("conta não encontrada")
 	ErrCreditCardNotFound       = errors.New("cartão de crédito não encontrado")
 	ErrCategoryNotFound         = errors.New("categoria não encontrada")
