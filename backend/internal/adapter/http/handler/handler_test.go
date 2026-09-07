@@ -39,8 +39,8 @@ func setupTestRouter() (*gin.Engine, token.Maker, *usecase.AuthUseCase) {
 	marketProvider := newMockMarketProvider()
 
 	authUC := usecase.NewAuthUseCase(userRepo, portfolioRepo, tokenMaker, 15*time.Minute, 7*24*time.Hour)
-	financeUC := usecase.NewFinanceUseCase(accountRepo, txRepo, catRepo, budgetRepo)
-	cardUC := usecase.NewCreditCardUseCase(cardRepo, catRepo)
+	financeUC := usecase.NewFinanceUseCase(accountRepo, txRepo, budgetRepo)
+	cardUC := usecase.NewCreditCardUseCase(cardRepo)
 	investUC := usecase.NewInvestmentUseCase(portfolioRepo, assetRepo, investTxRepo, earningRepo, accountRepo, marketProvider)
 	marketUC := usecase.NewMarketUseCase(assetRepo, marketProvider)
 

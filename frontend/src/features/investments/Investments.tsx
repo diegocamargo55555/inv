@@ -7,7 +7,6 @@ import { Account, Asset, PortfolioSummary, PositionSummary, InvestmentTransactio
 
 export const Investments: React.FC = () => {
   const { hideValues } = usePrivacyStore()
-  const [, setPortfolios] = useState<any[]>([])
   const [accounts, setAccounts] = useState<Account[]>([])
   const [selectedPortId, setSelectedPortId] = useState<string>('')
   const [summary, setSummary] = useState<PortfolioSummary | null>(null)
@@ -78,7 +77,6 @@ export const Investments: React.FC = () => {
         api.get<Asset[]>('/investments/assets/search'),
         api.get<Account[]>('/accounts'),
       ])
-      setPortfolios(portsRes.data)
       setAvailableAssets(assetsRes.data)
       setSearchResults(assetsRes.data)
       setAccounts(accsRes.data)
