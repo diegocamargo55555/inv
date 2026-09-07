@@ -13,20 +13,17 @@ import (
 type FinanceUseCase struct {
 	accRepo    AccountRepository
 	txRepo     TransactionRepository
-	catRepo    CategoryRepository
 	budgetRepo BudgetRepository
 }
 
 func NewFinanceUseCase(
 	accRepo AccountRepository,
 	txRepo TransactionRepository,
-	catRepo CategoryRepository,
 	budgetRepo BudgetRepository,
 ) *FinanceUseCase {
 	return &FinanceUseCase{
 		accRepo:    accRepo,
 		txRepo:     txRepo,
-		catRepo:    catRepo,
 		budgetRepo: budgetRepo,
 	}
 }

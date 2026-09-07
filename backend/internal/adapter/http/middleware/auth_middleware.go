@@ -15,7 +15,7 @@ const (
 )
 
 // AuthMiddleware creates a gin middleware for JWT authentication
-func AuthMiddleware(tokenMaker token.Maker) gin.HandlerFunc {
+func AuthMiddleware(tokenMaker *token.JWTMaker) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		authorizationHeader := ctx.GetHeader(AuthorizationHeaderKey)
 		if len(authorizationHeader) == 0 {
