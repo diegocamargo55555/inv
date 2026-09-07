@@ -22,7 +22,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func setupTestRouter() (*gin.Engine, token.Maker, *usecase.AuthUseCase) {
+func setupTestRouter() (*gin.Engine, *token.JWTMaker, *usecase.AuthUseCase) {
 	gin.SetMode(gin.TestMode)
 	tokenMaker := token.NewJWTMaker("supersecretkeyforhandlertesting32char")
 
