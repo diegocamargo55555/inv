@@ -5,7 +5,6 @@ import { Login } from './features/auth/Login'
 import { Register } from './features/auth/Register'
 import { Dashboard } from './features/dashboard/Dashboard'
 import { Finances } from './features/finances/Finances'
-import { CreditCards } from './features/credit-cards/CreditCards'
 import { Investments } from './features/investments/Investments'
 import { useAuthStore } from './stores/auth'
 
@@ -56,7 +55,6 @@ export const AppRoutes: React.FC = () => {
       >
         <Route index element={<Dashboard />} />
         <Route path="finances" element={<Finances />} />
-        <Route path="credit-cards" element={<CreditCards />} />
         <Route path="investments" element={<Investments />} />
       </Route>
 

@@ -7,24 +7,28 @@ import (
 	"log"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 	"unicode"
 
 	"github.com/invest/backend/internal/domain"
-	"github.com/redis/go-redis/v9"
 	"github.com/shopspring/decimal"
 )
 
+type cacheEntry struct {
+	value     decimal.Decimal
+	expiresAt time.Time
+}
+
 type MarketClient struct {
-	redisClient  *redis.Client
+	cache        sync.Map
 	httpClient   *http.Client
 	brapiToken   string
 	finnhubToken string
 }
 
-func NewMarketClient(redisClient *redis.Client, brapiToken string, finnhubToken string) *MarketClient {
+func NewMarketClient(brapiToken string, finnhubToken string) *MarketClient {
 	return &MarketClient{
-		redisClient:  redisClient,
 		httpClient:   &http.Client{Timeout: 8 * time.Second},
 		brapiToken:   brapiToken,
 		finnhubToken: finnhubToken,
@@ -49,19 +53,18 @@ func isUSTicker(ticker string) bool {
 	return true
 }
 
-// GetQuote retrieves the asset quote from Brapi (B3), Finnhub (US NYSE/NASDAQ), or CoinGecko (Crypto), with 5-min Redis caching
+// GetQuote retrieves the asset quote with in-memory 5-minute caching
 func (c *MarketClient) GetQuote(ctx context.Context, ticker string) (decimal.Decimal, error) {
 	ticker = strings.ToUpper(strings.TrimSpace(ticker))
 	cacheKey := fmt.Sprintf("quote:%s", ticker)
 
-	// 1. Check Redis cache first (cached for 5 minutes)
-	if c.redisClient != nil {
-		cachedPrice, err := c.redisClient.Get(ctx, cacheKey).Result()
-		if err == nil && cachedPrice != "" {
-			if d, err := decimal.NewFromString(cachedPrice); err == nil && d.GreaterThan(decimal.Zero) {
-				return d, nil
-			}
+	// 1. Check in-memory cache first (cached for 5 minutes)
+	if val, ok := c.cache.Load(cacheKey); ok {
+		entry := val.(cacheEntry)
+		if time.Now().Before(entry.expiresAt) {
+			return entry.value, nil
 		}
+		c.cache.Delete(cacheKey)
 	}
 
 	// 2. Fetch directly from external API (Finnhub for US, Brapi for B3, CoinGecko for Crypto)
@@ -94,43 +97,11 @@ func (c *MarketClient) GetQuote(ctx context.Context, ticker string) (decimal.Dec
 	}
 
 	if fetchErr != nil {
-		log.Printf("[MarketClient] Failed to fetch live quote for %s: %v. Using offline fallback if available.", ticker, fetchErr)
-		// Fallback default prices for common assets during offline/dev mode or quota limits
-		fallbackPrices := map[string]float64{
-			// Brazilian B3 Stocks & FIIs
-			"PETR4":  38.25,
-			"VALE3":  61.50,
-			"ITUB4":  35.80,
-			"BBAS3":  27.40,
-			"WEGE3":  52.10,
-			"MXRF11": 10.15,
-			"HGLG11": 162.00,
-			// US NYSE / NASDAQ Stocks & ETFs
-			"AAPL":  225.00,
-			"MSFT":  420.00,
-			"NVDA":  120.00,
-			"TSLA":  215.00,
-			"GOOGL": 165.00,
-			"AMZN":  175.00,
-			"META":  510.00,
-			"VOO":   510.00,
-			"SPY":   560.00,
-			"QQQ":   480.00,
-			// Crypto
-			"BTC": 64500.00,
-			"ETH": 2650.00,
-			"SOL": 145.00,
-		}
-		if p, ok := fallbackPrices[ticker]; ok {
-			price = decimal.NewFromFloat(p)
-		} else {
-			return decimal.Zero, fetchErr
-		}
+		return decimal.Zero, fetchErr
 	}
 
-	// Cache result in Redis for 5 minutes (as requested)
-	if c.redisClient != nil && !price.IsZero() {
-		_ = c.redisClient.Set(ctx, cacheKey, price.String(), 5*time.Minute).Err()
+	if !price.IsZero() {
+		c.cache.Store(cacheKey, cacheEntry{value: price, expiresAt: time.Now().Add(5 * time.Minute)})
 	}
 
 	return price, nil
@@ -252,13 +223,13 @@ func (c *MarketClient) GetExchangeRate(ctx context.Context, fromCurrency, toCurr
 	cacheKey := fmt.Sprintf("fx:%s_%s", from, to)
 	lastKnownKey := fmt.Sprintf("fx:last_known:%s_%s", from, to)
 
-	// 1. Check short-term Redis cache (5 minutes to keep it as fresh as possible)
-	if c.redisClient != nil {
-		if cached, err := c.redisClient.Get(ctx, cacheKey).Result(); err == nil && cached != "" {
-			if d, err := decimal.NewFromString(cached); err == nil && d.GreaterThan(decimal.Zero) {
-				return d, nil
-			}
+	// 1. Check in-memory cache (5 minutes)
+	if val, ok := c.cache.Load(cacheKey); ok {
+		entry := val.(cacheEntry)
+		if time.Now().Before(entry.expiresAt) {
+			return entry.value, nil
 		}
+		c.cache.Delete(cacheKey)
 	}
 
 	// 2. Fetch live rate from primary provider (AwesomeAPI)
@@ -269,31 +240,20 @@ func (c *MarketClient) GetExchangeRate(ctx context.Context, fromCurrency, toCurr
 	}
 
 	if err == nil && !rate.IsZero() {
-		if c.redisClient != nil {
-			_ = c.redisClient.Set(ctx, cacheKey, rate.String(), 5*time.Minute).Err()
-			_ = c.redisClient.Set(ctx, lastKnownKey, rate.String(), 0).Err() // Persist last real rate without expiration
-		}
+		c.cache.Store(cacheKey, cacheEntry{value: rate, expiresAt: time.Now().Add(5 * time.Minute)})
+		c.cache.Store(lastKnownKey, cacheEntry{value: rate, expiresAt: time.Now().Add(100 * 365 * 24 * time.Hour)})
 		return rate, nil
 	}
 
-	// 4. If all live providers fail, use the last successfully recorded market rate from Redis
-	if c.redisClient != nil {
-		if lastKnown, err := c.redisClient.Get(ctx, lastKnownKey).Result(); err == nil && lastKnown != "" {
-			if d, err := decimal.NewFromString(lastKnown); err == nil && d.GreaterThan(decimal.Zero) {
-				return d, nil
-			}
+	// 4. If all live providers fail, use last successfully recorded market rate from in-memory cache
+	if val, ok := c.cache.Load(lastKnownKey); ok {
+		entry := val.(cacheEntry)
+		if entry.value.GreaterThan(decimal.Zero) {
+			return entry.value, nil
 		}
 	}
 
-	// 5. Offline initial fallback (last market reference, not arbitrary 5.50)
-	if from == "USD" && to == "BRL" {
-		return decimal.NewFromFloat(5.1259), nil
-	}
-	if from == "EUR" && to == "BRL" {
-		return decimal.NewFromFloat(5.9576), nil
-	}
-
-	return decimal.NewFromInt(1), err
+	return decimal.Zero, err
 }
 
 func (c *MarketClient) fetchLiveRateAwesome(ctx context.Context, from, to string) (decimal.Decimal, error) {

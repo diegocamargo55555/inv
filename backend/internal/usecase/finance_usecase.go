@@ -15,6 +15,7 @@ type FinanceUseCase struct {
 	accRepo    AccountRepository
 	txRepo     TransactionRepository
 	budgetRepo BudgetRepository
+	catRepo    CategoryRepository
 	marketData MarketDataProvider
 }
 
@@ -22,17 +23,27 @@ func NewFinanceUseCase(
 	accRepo AccountRepository,
 	txRepo TransactionRepository,
 	budgetRepo BudgetRepository,
+	catRepo CategoryRepository,
 ) *FinanceUseCase {
 	return &FinanceUseCase{
 		accRepo:    accRepo,
 		txRepo:     txRepo,
 		budgetRepo: budgetRepo,
+		catRepo:    catRepo,
 	}
 }
 
 func (uc *FinanceUseCase) WithMarketData(marketData MarketDataProvider) *FinanceUseCase {
 	uc.marketData = marketData
 	return uc
+}
+
+func (uc *FinanceUseCase) GetCategories(ctx context.Context, userID uuid.UUID) ([]domain.Category, error) {
+	return uc.catRepo.GetByUserID(ctx, userID)
+}
+
+func (uc *FinanceUseCase) CreateCategory(ctx context.Context, cat *domain.Category) error {
+	return uc.catRepo.Create(ctx, cat)
 }
 
 // CreateAccount creates a new bank account or wallet
@@ -109,12 +120,10 @@ func (uc *FinanceUseCase) CreateTransaction(
 		Amount:            amount,
 		Date:              date,
 		Description:       desc,
-		Notes:             notes,
-		Tags:              tags,
-		InstallmentNumber: 1,
-		TotalInstallments: 1,
-		CreatedAt:         time.Now(),
-		UpdatedAt:         time.Now(),
+		Notes:       notes,
+		Tags:        tags,
+		CreatedAt:   time.Now(),
+		UpdatedAt:   time.Now(),
 	}
 
 	if err := uc.txRepo.Create(ctx, tx); err != nil {

@@ -32,28 +32,24 @@ func setupTestRouter() (*gin.Engine, *token.JWTMaker, *usecase.AuthUseCase) {
 	txRepo := newMockTxRepo()
 	catRepo := newMockCategoryRepo()
 	budgetRepo := newMockBudgetRepo()
-	cardRepo := newMockCardRepo()
 	assetRepo := newMockAssetRepo()
 	investTxRepo := &mockInvestTxRepo{}
 	earningRepo := &mockEarningRepo{}
 	marketProvider := newMockMarketProvider()
 
 	authUC := usecase.NewAuthUseCase(userRepo, portfolioRepo, tokenMaker, 15*time.Minute, 7*24*time.Hour)
-	financeUC := usecase.NewFinanceUseCase(accountRepo, txRepo, budgetRepo)
-	cardUC := usecase.NewCreditCardUseCase(cardRepo)
+	financeUC := usecase.NewFinanceUseCase(accountRepo, txRepo, budgetRepo, catRepo)
 	investUC := usecase.NewInvestmentUseCase(portfolioRepo, assetRepo, investTxRepo, earningRepo, accountRepo, marketProvider)
 	marketUC := usecase.NewMarketUseCase(assetRepo, marketProvider)
 
 	authHandler := handler.NewAuthHandler(authUC)
-	financeHandler := handler.NewFinanceHandler(financeUC, catRepo)
-	cardHandler := handler.NewCreditCardHandler(cardUC)
-	investHandler := handler.NewInvestmentHandler(investUC, marketUC, portfolioRepo, assetRepo, earningRepo)
+	financeHandler := handler.NewFinanceHandler(financeUC)
+	investHandler := handler.NewInvestmentHandler(investUC, marketUC)
 
 	router := httpAdapter.SetupRouter(httpAdapter.RouterConfig{
 		TokenMaker:        tokenMaker,
 		AuthHandler:       authHandler,
 		FinanceHandler:    financeHandler,
-		CreditCardHandler: cardHandler,
 		InvestmentHandler: investHandler,
 	})
 
@@ -239,24 +235,6 @@ func TestHTTPHandlers_FinanceAndCards(t *testing.T) {
 		assert.Equal(t, http.StatusOK, w.Code)
 		assert.Contains(t, w.Body.String(), "Freelance Editado")
 	})
-
-	t.Run("POST /api/v1/cards creates card", func(t *testing.T) {
-		body, _ := json.Marshal(dto.CreateCreditCardRequest{
-			Name:       "Mastercard Black",
-			Limit:      decimal.NewFromFloat(10000.00),
-			ClosingDay: 20,
-			DueDay:     27,
-			Brand:      "Mastercard",
-			Color:      "#000000",
-		})
-		req := httptest.NewRequest(http.MethodPost, "/api/v1/cards", bytes.NewBuffer(body))
-		req.Header.Set("Content-Type", "application/json")
-		req.Header.Set("Authorization", authHeader)
-		w := httptest.NewRecorder()
-		router.ServeHTTP(w, req)
-
-		assert.Equal(t, http.StatusCreated, w.Code)
-	})
 }
 
 func TestHTTPHandlers_InvestmentsOrdersCRUD(t *testing.T) {
@@ -300,7 +278,7 @@ func TestHTTPHandlers_InvestmentsOrdersCRUD(t *testing.T) {
 	var orderID string
 
 	t.Run("POST /api/v1/investments/orders/buy creates buy order", func(t *testing.T) {
-		body, _ := json.Marshal(dto.ExecuteBuyOrderRequest{
+		body, _ := json.Marshal(dto.ExecuteOrderRequest{
 			PortfolioID: portID,
 			AssetID:     asset.ID,
 			Quantity:    decimal.NewFromFloat(100),

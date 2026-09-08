@@ -98,7 +98,7 @@ docker compose up -d --build
 │   └── Dockerfile
 ├── frontend/
 │   ├── src/
-│   │   ├── features/               # Módulos por Domínio (auth, dashboard, finances, credit-cards, investments)
+│   │   ├── features/               # Módulos por Domínio (auth, dashboard, finances, investments)
 │   │   ├── components/layout/      # Sidebar, Header e Layout principal
 │   │   ├── services/               # Cliente Axios com interceptors
 │   │   ├── stores/                 # Zustand (Auth, Privacy Mode)

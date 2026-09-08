@@ -36,7 +36,7 @@ export const Finances: React.FC = () => {
   const [accCurrency, setAccCurrency] = useState('BRL')
   const [accBalance, setAccBalance] = useState('')
   const [accInstitution, setAccInstitution] = useState('')
-  const [accColor] = useState('#10B981')
+  const accColor = '#10B981'
 
   const [usdRate, setUsdRate] = useState<number>(0)
 
@@ -411,7 +411,7 @@ export const Finances: React.FC = () => {
                         )}
                       </span>
                     ) : (
-                      tx.credit_card?.name || 'Conta Padrão'
+                      'Conta Padrão'
                     )}
                   </td>
                   <td className={`py-3.5 text-right font-bold ${tx.type === 'income' ? 'text-emerald-400' : 'text-slate-200'}`}>

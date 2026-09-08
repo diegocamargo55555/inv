@@ -11,26 +11,17 @@ import (
 )
 
 type InvestmentHandler struct {
-	investUC      *usecase.InvestmentUseCase
-	marketUC      *usecase.MarketUseCase
-	portfolioRepo usecase.PortfolioRepository
-	assetRepo     usecase.AssetRepository
-	earningRepo   usecase.EarningRepository
+	investUC *usecase.InvestmentUseCase
+	marketUC *usecase.MarketUseCase
 }
 
 func NewInvestmentHandler(
 	investUC *usecase.InvestmentUseCase,
 	marketUC *usecase.MarketUseCase,
-	portfolioRepo usecase.PortfolioRepository,
-	assetRepo usecase.AssetRepository,
-	earningRepo usecase.EarningRepository,
 ) *InvestmentHandler {
 	return &InvestmentHandler{
-		investUC:      investUC,
-		marketUC:      marketUC,
-		portfolioRepo: portfolioRepo,
-		assetRepo:     assetRepo,
-		earningRepo:   earningRepo,
+		investUC: investUC,
+		marketUC: marketUC,
 	}
 }
 
@@ -41,7 +32,7 @@ func (h *InvestmentHandler) GetPortfolios(c *gin.Context) {
 		return
 	}
 
-	portfolios, err := h.portfolioRepo.GetByUserID(c.Request.Context(), userID)
+	portfolios, err := h.investUC.GetUserPortfolios(c.Request.Context(), userID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -78,7 +69,7 @@ func (h *InvestmentHandler) ExecuteBuy(c *gin.Context) {
 		return
 	}
 
-	var req dto.ExecuteBuyOrderRequest
+	var req dto.ExecuteOrderRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -110,7 +101,7 @@ func (h *InvestmentHandler) ExecuteSell(c *gin.Context) {
 		return
 	}
 
-	var req dto.ExecuteSellOrderRequest
+	var req dto.ExecuteOrderRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -212,7 +203,7 @@ func (h *InvestmentHandler) GetEarnings(c *gin.Context) {
 		return
 	}
 
-	earnings, err := h.earningRepo.GetByPortfolioID(c.Request.Context(), portfolioID)
+	earnings, err := h.investUC.GetEarnings(c.Request.Context(), portfolioID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -233,7 +224,7 @@ func (h *InvestmentHandler) CreateEarning(c *gin.Context) {
 		req.NetTotalAmount = req.TotalAmount
 	}
 
-	if err := h.earningRepo.Create(c.Request.Context(), &req); err != nil {
+	if err := h.investUC.CreateEarning(c.Request.Context(), &req); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}

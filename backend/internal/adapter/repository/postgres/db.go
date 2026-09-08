@@ -35,7 +35,6 @@ func NewDB(cfg *config.Config) (*gorm.DB, error) {
 		&domain.RefreshToken{},
 		&domain.Account{},
 		&domain.Category{},
-		&domain.CreditCard{},
 		&domain.Transaction{},
 		&domain.Budget{},
 		&domain.Asset{},

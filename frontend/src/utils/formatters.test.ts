@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { formatCurrency, formatPercentage, formatInvoiceMonth } from './formatters'
+import { formatCurrency, formatPercentage } from './formatters'
 
 describe('Formatters Utils (TDD)', () => {
   it('formats BRL currency properly', () => {
@@ -17,10 +17,5 @@ describe('Formatters Utils (TDD)', () => {
     expect(formatPercentage(12.456)).toBe('+12.46%')
     expect(formatPercentage(-3.2)).toBe('-3.20%')
     expect(formatPercentage(0)).toBe('0.00%')
-  })
-
-  it('formats invoice month year to readable label', () => {
-    expect(formatInvoiceMonth('2026-03')).toBe('Mar/2026')
-    expect(formatInvoiceMonth('2026-12')).toBe('Dez/2026')
   })
 })

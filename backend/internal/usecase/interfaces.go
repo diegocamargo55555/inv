@@ -45,16 +45,6 @@ type CategoryRepository interface {
 	GetByID(ctx context.Context, id uuid.UUID) (*domain.Category, error)
 }
 
-// CreditCardRepository defines data operations for Credit Cards and Invoices
-type CreditCardRepository interface {
-	Create(ctx context.Context, card *domain.CreditCard) error
-	GetByID(ctx context.Context, id uuid.UUID) (*domain.CreditCard, error)
-	GetByUserID(ctx context.Context, userID uuid.UUID) ([]domain.CreditCard, error)
-	CreateTransactions(ctx context.Context, txs []domain.Transaction) error
-	GetInvoiceTransactions(ctx context.Context, cardID uuid.UUID, invoiceMonth string) ([]domain.Transaction, error)
-	Delete(ctx context.Context, id uuid.UUID) error
-}
-
 // BudgetRepository defines data operations for Budgets
 type BudgetRepository interface {
 	CreateOrUpdate(ctx context.Context, budget *domain.Budget) error
@@ -101,4 +91,5 @@ type EarningRepository interface {
 type MarketDataProvider interface {
 	GetQuote(ctx context.Context, ticker string) (decimal.Decimal, error)
 	GetExchangeRate(ctx context.Context, fromCurrency, toCurrency string) (decimal.Decimal, error)
+	SearchAssets(ctx context.Context, query string) ([]domain.Asset, error)
 }

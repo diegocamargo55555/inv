@@ -37,12 +37,14 @@ export const Investments: React.FC = () => {
   // Edit Order Modal
   const [isEditOrderModalOpen, setIsEditOrderModalOpen] = useState(false)
   const [editingOrder, setEditingOrder] = useState<InvestmentTransaction | null>(null)
-  const [editQty, setEditQty] = useState('')
-  const [editPrice, setEditPrice] = useState('')
-  const [editFees, setEditFees] = useState('0')
-  const [editDate, setEditDate] = useState('')
-  const [editNotes, setEditNotes] = useState('')
-  const [editAccountId, setEditAccountId] = useState('')
+  const [editForm, setEditForm] = useState({
+    qty: '',
+    price: '',
+    fees: '0',
+    date: '',
+    notes: '',
+    accountId: '',
+  })
   const [editError, setEditError] = useState('')
   const [isEditSubmitting, setIsEditSubmitting] = useState(false)
 
@@ -296,12 +298,14 @@ export const Investments: React.FC = () => {
 
   const handleOpenEditOrder = (order: InvestmentTransaction) => {
     setEditingOrder(order)
-    setEditQty(order.quantity)
-    setEditPrice(order.unit_price)
-    setEditFees(order.fees || '0')
-    setEditDate(order.date ? order.date.split('T')[0] : new Date().toISOString().split('T')[0])
-    setEditNotes(order.notes || '')
-    setEditAccountId(order.account_id || '')
+    setEditForm({
+      qty: order.quantity,
+      price: order.unit_price,
+      fees: order.fees || '0',
+      date: order.date ? order.date.split('T')[0] : new Date().toISOString().split('T')[0],
+      notes: order.notes || '',
+      accountId: order.account_id || '',
+    })
     setEditError('')
     setIsEditOrderModalOpen(true)
   }
@@ -311,8 +315,8 @@ export const Investments: React.FC = () => {
     if (!editingOrder) return
     setEditError('')
 
-    const qtyNum = parseFloat(editQty)
-    const priceNum = parseFloat(editPrice)
+    const qtyNum = parseFloat(editForm.qty)
+    const priceNum = parseFloat(editForm.price)
     if (isNaN(qtyNum) || qtyNum <= 0) {
       setEditError('Informe uma quantidade válida maior que zero.')
       return
@@ -327,10 +331,10 @@ export const Investments: React.FC = () => {
       await api.put(`/investments/orders/${editingOrder.id}`, {
         quantity: qtyNum,
         unit_price: priceNum,
-        fees: parseFloat(editFees || '0'),
-        date: new Date(editDate).toISOString(),
-        notes: editNotes,
-        account_id: editAccountId || null,
+        fees: parseFloat(editForm.fees || '0'),
+        date: new Date(editForm.date).toISOString(),
+        notes: editForm.notes,
+        account_id: editForm.accountId || null,
       })
       setIsEditOrderModalOpen(false)
       setEditingOrder(null)
@@ -1130,8 +1134,8 @@ export const Investments: React.FC = () => {
                     type="number"
                     step="any"
                     required
-                    value={editQty}
-                    onChange={(e) => setEditQty(e.target.value)}
+                    value={editForm.qty}
+                    onChange={(e) => setEditForm((prev) => ({ ...prev, qty: e.target.value }))}
                     className="w-full px-3.5 py-2.5 bg-dark-950 border border-slate-800 rounded-xl text-sm font-mono text-white focus:outline-none focus:border-brand-500"
                   />
                 </div>
@@ -1143,21 +1147,21 @@ export const Investments: React.FC = () => {
                     type="number"
                     step="0.0001"
                     required
-                    value={editPrice}
-                    onChange={(e) => setEditPrice(e.target.value)}
+                    value={editForm.price}
+                    onChange={(e) => setEditForm((prev) => ({ ...prev, price: e.target.value }))}
                     className="w-full px-3.5 py-2.5 bg-dark-950 border border-slate-800 rounded-xl text-sm font-mono text-white focus:outline-none focus:border-brand-500"
                   />
                 </div>
               </div>
 
               {/* Total calculation preview */}
-              {parseFloat(editQty) > 0 && parseFloat(editPrice) > 0 && (
+              {parseFloat(editForm.qty) > 0 && parseFloat(editForm.price) > 0 && (
                 <div className="p-3 rounded-xl bg-dark-950/80 border border-slate-800/80 text-xs flex justify-between">
                   <span className="text-slate-400">Novo Total da Operação:</span>
                   <strong className="text-white font-mono">
                     {formatCurrency(
-                      parseFloat(editQty) * parseFloat(editPrice) +
-                        (editingOrder.type === 'buy' ? parseFloat(editFees || '0') : -parseFloat(editFees || '0')),
+                      parseFloat(editForm.qty) * parseFloat(editForm.price) +
+                        (editingOrder.type === 'buy' ? parseFloat(editForm.fees || '0') : -parseFloat(editForm.fees || '0')),
                       editingOrder.asset?.currency
                     )}
                   </strong>
@@ -1173,8 +1177,8 @@ export const Investments: React.FC = () => {
                   <input
                     type="number"
                     step="0.01"
-                    value={editFees}
-                    onChange={(e) => setEditFees(e.target.value)}
+                    value={editForm.fees}
+                    onChange={(e) => setEditForm((prev) => ({ ...prev, fees: e.target.value }))}
                     className="w-full px-3.5 py-2.5 bg-dark-950 border border-slate-800 rounded-xl text-sm font-mono text-white focus:outline-none focus:border-brand-500"
                   />
                 </div>
@@ -1185,8 +1189,8 @@ export const Investments: React.FC = () => {
                   <input
                     type="date"
                     required
-                    value={editDate}
-                    onChange={(e) => setEditDate(e.target.value)}
+                    value={editForm.date}
+                    onChange={(e) => setEditForm((prev) => ({ ...prev, date: e.target.value }))}
                     className="w-full px-3.5 py-2.5 bg-dark-950 border border-slate-800 rounded-xl text-sm text-white focus:outline-none focus:border-brand-500"
                   />
                 </div>
@@ -1199,8 +1203,8 @@ export const Investments: React.FC = () => {
                     Conta Bancária Vinculada (Opcional)
                   </label>
                   <select
-                    value={editAccountId}
-                    onChange={(e) => setEditAccountId(e.target.value)}
+                    value={editForm.accountId}
+                    onChange={(e) => setEditForm((prev) => ({ ...prev, accountId: e.target.value }))}
                     className="w-full px-3.5 py-2.5 bg-dark-950 border border-slate-800 rounded-xl text-xs text-slate-200 focus:outline-none focus:border-brand-500"
                   >
                     <option value="">Não movimentar saldo em conta</option>
@@ -1221,8 +1225,8 @@ export const Investments: React.FC = () => {
                 <input
                   type="text"
                   placeholder="Observações sobre a operação..."
-                  value={editNotes}
-                  onChange={(e) => setEditNotes(e.target.value)}
+                  value={editForm.notes}
+                  onChange={(e) => setEditForm((prev) => ({ ...prev, notes: e.target.value }))}
                   className="w-full px-3.5 py-2.5 bg-dark-950 border border-slate-800 rounded-xl text-sm text-white focus:outline-none focus:border-brand-500"
                 />
               </div>

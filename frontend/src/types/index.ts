@@ -39,7 +39,6 @@ export interface Transaction {
   id: string
   user_id: string
   account_id?: string
-  credit_card_id?: string
   category_id?: string
   type: TransactionType
   status: string
@@ -48,30 +47,8 @@ export interface Transaction {
   description: string
   notes?: string
   tags?: string
-  installment_number: number
-  total_installments: number
-  invoice_month?: string
   account?: Account
   category?: Category
-  credit_card?: CreditCard
-}
-
-export interface CreditCard {
-  id: string
-  name: string
-  limit: string
-  closing_day: number
-  due_day: number
-  brand: string
-  color: string
-}
-
-export interface InvoiceSummary {
-  card_id: string
-  card_name: string
-  invoice_month: string
-  total_amount: string
-  transactions: Transaction[]
 }
 
 export interface BudgetProgress {

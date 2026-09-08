@@ -1,6 +1,6 @@
 import React from 'react'
 import { NavLink } from 'react-router-dom'
-import { LayoutDashboard, Wallet, CreditCard, TrendingUp, LogOut } from 'lucide-react'
+import { LayoutDashboard, Wallet, TrendingUp, LogOut } from 'lucide-react'
 import { useAuthStore } from '../../stores/auth'
 
 export const Sidebar: React.FC = () => {
@@ -9,7 +9,6 @@ export const Sidebar: React.FC = () => {
   const navItems = [
     { to: '/', label: 'Dashboard', icon: LayoutDashboard },
     { to: '/finances', label: 'Finanças & Orçamento', icon: Wallet },
-    { to: '/credit-cards', label: 'Cartões & Faturas', icon: CreditCard },
     { to: '/investments', label: 'Investimentos', icon: TrendingUp },
   ]
 

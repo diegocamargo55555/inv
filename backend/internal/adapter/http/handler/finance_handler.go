@@ -16,13 +16,11 @@ import (
 
 type FinanceHandler struct {
 	financeUC *usecase.FinanceUseCase
-	catRepo   usecase.CategoryRepository
 }
 
-func NewFinanceHandler(financeUC *usecase.FinanceUseCase, catRepo usecase.CategoryRepository) *FinanceHandler {
+func NewFinanceHandler(financeUC *usecase.FinanceUseCase) *FinanceHandler {
 	return &FinanceHandler{
 		financeUC: financeUC,
-		catRepo:   catRepo,
 	}
 }
 
@@ -155,7 +153,7 @@ func (h *FinanceHandler) GetCategories(c *gin.Context) {
 		return
 	}
 
-	categories, err := h.catRepo.GetByUserID(c.Request.Context(), userID)
+	categories, err := h.financeUC.GetCategories(c.Request.Context(), userID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -193,7 +191,7 @@ func (h *FinanceHandler) CreateCategory(c *gin.Context) {
 		UpdatedAt: time.Now(),
 	}
 
-	if err := h.catRepo.Create(c.Request.Context(), cat); err != nil {
+	if err := h.financeUC.CreateCategory(c.Request.Context(), cat); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}

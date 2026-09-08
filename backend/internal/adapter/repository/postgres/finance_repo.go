@@ -61,7 +61,7 @@ func (r *GormTxRepo) Create(ctx context.Context, tx *domain.Transaction) error {
 
 func (r *GormTxRepo) GetByID(ctx context.Context, id uuid.UUID) (*domain.Transaction, error) {
 	var tx domain.Transaction
-	err := r.db.WithContext(ctx).Preload("Account").Preload("Category").Preload("CreditCard").First(&tx, "id = ?", id).Error
+	err := r.db.WithContext(ctx).Preload("Account").Preload("Category").First(&tx, "id = ?", id).Error
 	if err != nil {
 		return nil, err
 	}
@@ -71,7 +71,7 @@ func (r *GormTxRepo) GetByID(ctx context.Context, id uuid.UUID) (*domain.Transac
 func (r *GormTxRepo) GetByUserID(ctx context.Context, userID uuid.UUID, limit, offset int) ([]domain.Transaction, error) {
 	var list []domain.Transaction
 	query := r.db.WithContext(ctx).Where("user_id = ?", userID).
-		Preload("Account").Preload("Category").Preload("CreditCard").
+		Preload("Account").Preload("Category").
 		Order("date DESC, created_at DESC")
 
 	if limit > 0 {
@@ -91,7 +91,7 @@ func (r *GormTxRepo) GetByMonth(ctx context.Context, userID uuid.UUID, year int,
 
 	var list []domain.Transaction
 	err := r.db.WithContext(ctx).Where("user_id = ? AND date >= ? AND date < ?", userID, startDate, endDate).
-		Preload("Account").Preload("Category").Preload("CreditCard").
+		Preload("Account").Preload("Category").
 		Order("date DESC").Find(&list).Error
 	return list, err
 }

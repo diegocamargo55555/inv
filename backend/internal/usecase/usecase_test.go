@@ -185,55 +185,6 @@ func (m *mockTxRepo) Delete(ctx context.Context, id uuid.UUID) error {
 	return nil
 }
 
-type mockCardRepo struct {
-	cards       map[uuid.UUID]*domain.CreditCard
-	cardTxs     map[uuid.UUID][]domain.Transaction
-	invoiceMap  map[string][]domain.Transaction
-}
-
-func newMockCardRepo() *mockCardRepo {
-	return &mockCardRepo{
-		cards:      make(map[uuid.UUID]*domain.CreditCard),
-		cardTxs:    make(map[uuid.UUID][]domain.Transaction),
-		invoiceMap: make(map[string][]domain.Transaction),
-	}
-}
-
-func (m *mockCardRepo) Create(ctx context.Context, card *domain.CreditCard) error {
-	m.cards[card.ID] = card
-	return nil
-}
-func (m *mockCardRepo) GetByID(ctx context.Context, id uuid.UUID) (*domain.CreditCard, error) {
-	return m.cards[id], nil
-}
-func (m *mockCardRepo) GetByUserID(ctx context.Context, uid uuid.UUID) ([]domain.CreditCard, error) {
-	var list []domain.CreditCard
-	for _, c := range m.cards {
-		if c.UserID == uid {
-			list = append(list, *c)
-		}
-	}
-	return list, nil
-}
-func (m *mockCardRepo) CreateTransactions(ctx context.Context, txs []domain.Transaction) error {
-	for _, tx := range txs {
-		if tx.CreditCardID != nil {
-			m.cardTxs[*tx.CreditCardID] = append(m.cardTxs[*tx.CreditCardID], tx)
-			key := tx.CreditCardID.String() + "_" + tx.InvoiceMonth
-			m.invoiceMap[key] = append(m.invoiceMap[key], tx)
-		}
-	}
-	return nil
-}
-func (m *mockCardRepo) GetInvoiceTransactions(ctx context.Context, cardID uuid.UUID, monthYear string) ([]domain.Transaction, error) {
-	key := cardID.String() + "_" + monthYear
-	return m.invoiceMap[key], nil
-}
-func (m *mockCardRepo) Delete(ctx context.Context, id uuid.UUID) error {
-	delete(m.cards, id)
-	return nil
-}
-
 type mockBudgetRepo struct {
 	budgets map[string]*domain.Budget
 }
@@ -368,6 +319,29 @@ func (m *mockInvestTxRepo) Delete(ctx context.Context, id uuid.UUID) error {
 	return nil
 }
 
+type mockEarningRepo struct {
+	earnings []*domain.Earning
+}
+
+func (m *mockEarningRepo) Create(ctx context.Context, e *domain.Earning) error {
+	m.earnings = append(m.earnings, e)
+	return nil
+}
+
+func (m *mockEarningRepo) GetByPortfolioID(ctx context.Context, pid uuid.UUID) ([]domain.Earning, error) {
+	var res []domain.Earning
+	for _, e := range m.earnings {
+		if e.PortfolioID == pid {
+			res = append(res, *e)
+		}
+	}
+	return res, nil
+}
+
+func (m *mockEarningRepo) GetByDateRange(ctx context.Context, pid uuid.UUID, start, end time.Time) ([]domain.Earning, error) {
+	return nil, nil
+}
+
 type mockMarketProvider struct {
 	quotes        map[string]decimal.Decimal
 	exchangeRates map[string]decimal.Decimal
@@ -393,6 +367,10 @@ func (m *mockMarketProvider) GetExchangeRate(ctx context.Context, from, to strin
 		return r, nil
 	}
 	return decimal.NewFromFloat(5.50), nil
+}
+
+func (m *mockMarketProvider) SearchAssets(ctx context.Context, query string) ([]domain.Asset, error) {
+	return nil, nil
 }
 
 // --- Tests ---
@@ -463,7 +441,7 @@ func TestFinanceUseCase_Full(t *testing.T) {
 	catRepo := newMockCategoryRepo()
 	budgetRepo := newMockBudgetRepo()
 
-	uc := usecase.NewFinanceUseCase(accRepo, txRepo, budgetRepo)
+	uc := usecase.NewFinanceUseCase(accRepo, txRepo, budgetRepo, catRepo)
 	ctx := context.Background()
 	userID := uuid.New()
 
@@ -512,44 +490,6 @@ func TestFinanceUseCase_Full(t *testing.T) {
 		assert.True(t, progressList[0].IsAlert)
 		assert.False(t, progressList[0].IsExceeded)
 		assert.InDelta(t, 83.33, progressList[0].Percentage, 0.1)
-	})
-}
-
-func TestCreditCardUseCase_Full(t *testing.T) {
-	cardRepo := newMockCardRepo()
-	uc := usecase.NewCreditCardUseCase(cardRepo)
-	ctx := context.Background()
-	userID := uuid.New()
-
-	var card *domain.CreditCard
-
-	t.Run("create credit card", func(t *testing.T) {
-		var err error
-		card, err = uc.CreateCard(ctx, userID, "Nubank Ultravioleta", decimal.NewFromFloat(8000.00), 20, 27, "Mastercard", "#820AD1")
-		require.NoError(t, err)
-		require.NotNil(t, card)
-
-		cards, err := uc.GetUserCards(ctx, userID)
-		require.NoError(t, err)
-		assert.Len(t, cards, 1)
-	})
-
-	t.Run("create installment expense distributed across invoices", func(t *testing.T) {
-		purchaseDate := time.Date(2026, time.February, 10, 14, 0, 0, 0, time.UTC)
-		txs, err := uc.CreateCardExpense(ctx, userID, card.ID, nil, decimal.NewFromFloat(300.00), 3, purchaseDate, "Passagem Aérea", "", "")
-		require.NoError(t, err)
-		require.Len(t, txs, 3)
-
-		// Invoices: Feb (2026-02), Mar (2026-03), Apr (2026-04)
-		assert.Equal(t, "2026-02", txs[0].InvoiceMonth)
-		assert.Equal(t, "2026-03", txs[1].InvoiceMonth)
-		assert.Equal(t, "2026-04", txs[2].InvoiceMonth)
-
-		// Check February Invoice
-		invFeb, err := uc.GetInvoice(ctx, userID, card.ID, "2026-02")
-		require.NoError(t, err)
-		assert.True(t, invFeb.TotalAmount.Equal(decimal.NewFromFloat(100.00)))
-		assert.Len(t, invFeb.Transactions, 1)
 	})
 }
 
@@ -731,8 +671,9 @@ func TestFinanceUseCase_UpdateAndDeleteTransaction(t *testing.T) {
 	accRepo := newMockAccountRepo()
 	txRepo := newMockTxRepo()
 	budgetRepo := newMockBudgetRepo()
+	catRepo := newMockCategoryRepo()
 
-	uc := usecase.NewFinanceUseCase(accRepo, txRepo, budgetRepo)
+	uc := usecase.NewFinanceUseCase(accRepo, txRepo, budgetRepo, catRepo)
 	ctx := context.Background()
 	userID := uuid.New()
 
@@ -776,4 +717,48 @@ func TestFinanceUseCase_UpdateAndDeleteTransaction(t *testing.T) {
 		_, err := uc.UpdateTransaction(ctx, userID, tx.ID, nil, nil, domain.TxTypeExpense, decimal.NewFromFloat(100.00), date, "Edit Sem Conta", "", "")
 		assert.ErrorIs(t, err, domain.ErrAccountRequired)
 	})
+
+	t.Run("categories via usecase", func(t *testing.T) {
+		newCat := &domain.Category{ID: uuid.New(), UserID: &userID, Name: "Saúde", Type: domain.CategoryTypeExpense}
+		err := uc.CreateCategory(ctx, newCat)
+		require.NoError(t, err)
+
+		cats, err := uc.GetCategories(ctx, userID)
+		require.NoError(t, err)
+		assert.NotEmpty(t, cats)
+	})
+}
+
+func TestInvestmentUseCase_PortfoliosAndEarnings(t *testing.T) {
+	assetRepo := newMockAssetRepo()
+	portfolioRepo := newMockPortfolioRepo(assetRepo)
+	investTxRepo := &mockInvestTxRepo{}
+	earningRepo := &mockEarningRepo{}
+	accountRepo := newMockAccountRepo()
+	marketProvider := newMockMarketProvider()
+
+	uc := usecase.NewInvestmentUseCase(portfolioRepo, assetRepo, investTxRepo, earningRepo, accountRepo, marketProvider)
+	ctx := context.Background()
+	userID := uuid.New()
+
+	p := &domain.Portfolio{ID: uuid.New(), UserID: userID, Name: "Principal"}
+	_ = portfolioRepo.Create(ctx, p)
+
+	portfolios, err := uc.GetUserPortfolios(ctx, userID)
+	require.NoError(t, err)
+	assert.Len(t, portfolios, 1)
+
+	earning := &domain.Earning{
+		ID:             uuid.New(),
+		PortfolioID:    p.ID,
+		Type:           domain.EarningTypeDividend,
+		TotalAmount:    decimal.NewFromFloat(50.00),
+		NetTotalAmount: decimal.NewFromFloat(50.00),
+	}
+	err = uc.CreateEarning(ctx, earning)
+	require.NoError(t, err)
+
+	earnings, err := uc.GetEarnings(ctx, p.ID)
+	require.NoError(t, err)
+	assert.Len(t, earnings, 1)
 }

@@ -1,6 +1,7 @@
 package postgres
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -11,39 +12,65 @@ import (
 )
 
 func SeedInitialData(db *gorm.DB) error {
-	defaultCategories := []domain.Category{
-		// Expense categories
-		{ID: uuid.MustParse("00000000-0000-0000-0000-000000000001"), Name: "Alimentação & Mercado", Type: domain.CategoryTypeExpense, Icon: "utensils", Color: "#EF4444", IsDefault: true, CreatedAt: time.Now()},
-		{ID: uuid.MustParse("00000000-0000-0000-0000-000000000002"), Name: "Moradia & Contas", Type: domain.CategoryTypeExpense, Icon: "home", Color: "#F59E0B", IsDefault: true, CreatedAt: time.Now()},
-		{ID: uuid.MustParse("00000000-0000-0000-0000-000000000003"), Name: "Transporte & Combustível", Type: domain.CategoryTypeExpense, Icon: "car", Color: "#3B82F6", IsDefault: true, CreatedAt: time.Now()},
-		{ID: uuid.MustParse("00000000-0000-0000-0000-000000000004"), Name: "Saúde & Farmácia", Type: domain.CategoryTypeExpense, Icon: "heart-pulse", Color: "#10B981", IsDefault: true, CreatedAt: time.Now()},
-		{ID: uuid.MustParse("00000000-0000-0000-0000-000000000005"), Name: "Lazer & Restaurantes", Type: domain.CategoryTypeExpense, Icon: "film", Color: "#8B5CF6", IsDefault: true, CreatedAt: time.Now()},
-		{ID: uuid.MustParse("00000000-0000-0000-0000-000000000006"), Name: "Educação & Cursos", Type: domain.CategoryTypeExpense, Icon: "graduation-cap", Color: "#06B6D4", IsDefault: true, CreatedAt: time.Now()},
-		{ID: uuid.MustParse("00000000-0000-0000-0000-000000000007"), Name: "Compras & Vestuário", Type: domain.CategoryTypeExpense, Icon: "shopping-bag", Color: "#EC4899", IsDefault: true, CreatedAt: time.Now()},
-		// Income categories
-		{ID: uuid.MustParse("00000000-0000-0000-0000-000000000008"), Name: "Salário / Remuneração", Type: domain.CategoryTypeIncome, Icon: "wallet", Color: "#10B981", IsDefault: true, CreatedAt: time.Now()},
-		{ID: uuid.MustParse("00000000-0000-0000-0000-000000000009"), Name: "Dividendos & Rendimentos", Type: domain.CategoryTypeIncome, Icon: "trending-up", Color: "#059669", IsDefault: true, CreatedAt: time.Now()},
-		{ID: uuid.MustParse("00000000-0000-0000-0000-000000000010"), Name: "Freelance & Outros", Type: domain.CategoryTypeIncome, Icon: "briefcase", Color: "#6366F1", IsDefault: true, CreatedAt: time.Now()},
+	now := time.Now()
+
+	categories := []struct {
+		name, icon, color string
+		catType           domain.CategoryType
+	}{
+		{"Alimentação & Mercado", "utensils", "#EF4444", domain.CategoryTypeExpense},
+		{"Moradia & Contas", "home", "#F59E0B", domain.CategoryTypeExpense},
+		{"Transporte & Combustível", "car", "#3B82F6", domain.CategoryTypeExpense},
+		{"Saúde & Farmácia", "heart-pulse", "#10B981", domain.CategoryTypeExpense},
+		{"Lazer & Restaurantes", "film", "#8B5CF6", domain.CategoryTypeExpense},
+		{"Educação & Cursos", "graduation-cap", "#06B6D4", domain.CategoryTypeExpense},
+		{"Compras & Vestuário", "shopping-bag", "#EC4899", domain.CategoryTypeExpense},
+		{"Salário / Remuneração", "wallet", "#10B981", domain.CategoryTypeIncome},
+		{"Dividendos & Rendimentos", "trending-up", "#059669", domain.CategoryTypeIncome},
+		{"Freelance & Outros", "briefcase", "#6366F1", domain.CategoryTypeIncome},
 	}
 
-	for _, cat := range defaultCategories {
+	for i, c := range categories {
+		cat := domain.Category{
+			ID:        uuid.MustParse(fmt.Sprintf("00000000-0000-0000-0000-%012d", i+1)),
+			Name:      c.name,
+			Type:      c.catType,
+			Icon:      c.icon,
+			Color:     c.color,
+			IsDefault: true,
+			CreatedAt: now,
+		}
 		db.Clauses(clause.OnConflict{DoNothing: true}).Create(&cat)
 	}
 
-	defaultAssets := []domain.Asset{
-		{ID: uuid.MustParse("10000000-0000-0000-0000-000000000001"), Ticker: "PETR4", Name: "Petrobras PN", Type: domain.AssetTypeStock, Currency: "BRL", CurrentPrice: decimal.NewFromFloat(38.25), Sector: "Petróleo e Gás", UpdatedAt: time.Now()},
-		{ID: uuid.MustParse("10000000-0000-0000-0000-000000000002"), Ticker: "VALE3", Name: "Vale ON", Type: domain.AssetTypeStock, Currency: "BRL", CurrentPrice: decimal.NewFromFloat(61.50), Sector: "Mineração", UpdatedAt: time.Now()},
-		{ID: uuid.MustParse("10000000-0000-0000-0000-000000000003"), Ticker: "ITUB4", Name: "Itaú Unibanco PN", Type: domain.AssetTypeStock, Currency: "BRL", CurrentPrice: decimal.NewFromFloat(35.80), Sector: "Financeiro", UpdatedAt: time.Now()},
-		{ID: uuid.MustParse("10000000-0000-0000-0000-000000000004"), Ticker: "BBAS3", Name: "Banco do Brasil ON", Type: domain.AssetTypeStock, Currency: "BRL", CurrentPrice: decimal.NewFromFloat(27.40), Sector: "Financeiro", UpdatedAt: time.Now()},
-		{ID: uuid.MustParse("10000000-0000-0000-0000-000000000005"), Ticker: "WEGE3", Name: "WEG ON", Type: domain.AssetTypeStock, Currency: "BRL", CurrentPrice: decimal.NewFromFloat(52.10), Sector: "Bens Industriais", UpdatedAt: time.Now()},
-		{ID: uuid.MustParse("10000000-0000-0000-0000-000000000006"), Ticker: "MXRF11", Name: "Maxi Renda FII", Type: domain.AssetTypeFII, Currency: "BRL", CurrentPrice: decimal.NewFromFloat(10.15), Sector: "Títulos e Valores Mobiliários", UpdatedAt: time.Now()},
-		{ID: uuid.MustParse("10000000-0000-0000-0000-000000000007"), Ticker: "HGLG11", Name: "CSHG Logística FII", Type: domain.AssetTypeFII, Currency: "BRL", CurrentPrice: decimal.NewFromFloat(162.00), Sector: "Logística", UpdatedAt: time.Now()},
-		{ID: uuid.MustParse("10000000-0000-0000-0000-000000000008"), Ticker: "BTC", Name: "Bitcoin", Type: domain.AssetTypeCrypto, Currency: "USD", CurrentPrice: decimal.NewFromFloat(64500.00), Sector: "Criptoativo", UpdatedAt: time.Now()},
-		{ID: uuid.MustParse("10000000-0000-0000-0000-000000000009"), Ticker: "ETH", Name: "Ethereum", Type: domain.AssetTypeCrypto, Currency: "USD", CurrentPrice: decimal.NewFromFloat(2650.00), Sector: "Smart Contracts", UpdatedAt: time.Now()},
-		{ID: uuid.MustParse("10000000-0000-0000-0000-000000000010"), Ticker: "AAPL", Name: "Apple Inc.", Type: domain.AssetTypeStock, Currency: "USD", CurrentPrice: decimal.NewFromFloat(225.00), Sector: "Tecnologia", UpdatedAt: time.Now()},
+	assets := []struct {
+		ticker, name, currency, sector string
+		price                          float64
+		assetType                      domain.AssetType
+	}{
+		{"PETR4", "Petrobras PN", "BRL", "Petróleo e Gás", 38.25, domain.AssetTypeStock},
+		{"VALE3", "Vale ON", "BRL", "Mineração", 61.50, domain.AssetTypeStock},
+		{"ITUB4", "Itaú Unibanco PN", "BRL", "Financeiro", 35.80, domain.AssetTypeStock},
+		{"BBAS3", "Banco do Brasil ON", "BRL", "Financeiro", 27.40, domain.AssetTypeStock},
+		{"WEGE3", "WEG ON", "BRL", "Bens Industriais", 52.10, domain.AssetTypeStock},
+		{"MXRF11", "Maxi Renda FII", "BRL", "Títulos e Valores Mobiliários", 10.15, domain.AssetTypeFII},
+		{"HGLG11", "CSHG Logística FII", "BRL", "Logística", 162.00, domain.AssetTypeFII},
+		{"BTC", "Bitcoin", "USD", "Criptoativo", 64500.00, domain.AssetTypeCrypto},
+		{"ETH", "Ethereum", "USD", "Smart Contracts", 2650.00, domain.AssetTypeCrypto},
+		{"AAPL", "Apple Inc.", "USD", "Tecnologia", 225.00, domain.AssetTypeStock},
 	}
 
-	for _, asset := range defaultAssets {
+	for i, a := range assets {
+		asset := domain.Asset{
+			ID:           uuid.MustParse(fmt.Sprintf("10000000-0000-0000-0000-%012d", i+1)),
+			Ticker:       a.ticker,
+			Name:         a.name,
+			Type:         a.assetType,
+			Currency:     a.currency,
+			CurrentPrice: decimal.NewFromFloat(a.price),
+			Sector:       a.sector,
+			UpdatedAt:    now,
+		}
 		db.Clauses(clause.OnConflict{DoNothing: true}).Create(&asset)
 	}
 

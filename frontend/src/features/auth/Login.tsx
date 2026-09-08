@@ -84,7 +84,7 @@ export const Login: React.FC = () => {
             </h1>
 
             <p className="text-slate-400 text-base leading-relaxed">
-              Consolidação de carteira multimoeda, cálculo automático de preço médio ponderado na B3, faturas de cartão e fluxo de caixa em um ecossistema unificado.
+              Consolidação de carteira multimoeda, cálculo automático de preço médio ponderado na B3 e fluxo de caixa em um ecossistema unificado.
             </p>
           </div>
 
@@ -107,9 +107,9 @@ export const Login: React.FC = () => {
                 <PieChart className="w-5 h-5" />
               </div>
               <div>
-                <h4 className="text-sm font-bold text-white">Orçamento & Faturas de Cartão</h4>
+                <h4 className="text-sm font-bold text-white">Orçamento & Metas Mensais</h4>
                 <p className="text-xs text-slate-400 mt-0.5">
-                  Projeção automática de parcelas futuras e alertas inteligentes de consumo a 80% do teto.
+                  Controle de gastos por categoria e alertas inteligentes de consumo a 80% do teto.
                 </p>
               </div>
             </div>

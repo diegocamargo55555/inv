@@ -33,35 +33,14 @@ type CreateAccountRequest struct {
 }
 
 type CreateTransactionRequest struct {
-	AccountID    *uuid.UUID             `json:"account_id" binding:"required"`
-	CategoryID   *uuid.UUID             `json:"category_id"`
-	CreditCardID *uuid.UUID             `json:"credit_card_id"`
-	Type         domain.TransactionType `json:"type" binding:"required"`
-	Amount       decimal.Decimal        `json:"amount" binding:"required"`
-	Date         time.Time              `json:"date" binding:"required"`
-	Description  string                 `json:"description" binding:"required"`
-	Notes        string                 `json:"notes"`
-	Tags         string                 `json:"tags"`
-}
-
-type CreateCreditCardRequest struct {
-	Name       string          `json:"name" binding:"required"`
-	Limit      decimal.Decimal `json:"limit" binding:"required"`
-	ClosingDay int             `json:"closing_day" binding:"required,min=1,max=31"`
-	DueDay     int             `json:"due_day" binding:"required,min=1,max=31"`
-	Brand      string          `json:"brand"`
-	Color      string          `json:"color"`
-}
-
-type CreateCardExpenseRequest struct {
-	CardID            uuid.UUID       `json:"card_id" binding:"required"`
-	CategoryID        *uuid.UUID      `json:"category_id"`
-	TotalAmount       decimal.Decimal `json:"total_amount" binding:"required"`
-	InstallmentsCount int             `json:"installments_count" binding:"required,min=1,max=96"`
-	PurchaseDate      time.Time       `json:"purchase_date" binding:"required"`
-	Description       string          `json:"description" binding:"required"`
-	Notes             string          `json:"notes"`
-	Tags              string          `json:"tags"`
+	AccountID   *uuid.UUID             `json:"account_id" binding:"required"`
+	CategoryID  *uuid.UUID             `json:"category_id"`
+	Type        domain.TransactionType `json:"type" binding:"required"`
+	Amount      decimal.Decimal        `json:"amount" binding:"required"`
+	Date        time.Time              `json:"date" binding:"required"`
+	Description string                 `json:"description" binding:"required"`
+	Notes       string                 `json:"notes"`
+	Tags        string                 `json:"tags"`
 }
 
 type SetBudgetRequest struct {
@@ -80,9 +59,6 @@ type ExecuteOrderRequest struct {
 	Date        time.Time       `json:"date" binding:"required"`
 	Notes       string          `json:"notes"`
 }
-
-type ExecuteBuyOrderRequest = ExecuteOrderRequest
-type ExecuteSellOrderRequest = ExecuteOrderRequest
 
 type UpdateInvestmentOrderRequest struct {
 	AccountID *uuid.UUID      `json:"account_id"`

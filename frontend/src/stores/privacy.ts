@@ -6,14 +6,10 @@ interface PrivacyState {
   toggleHideValues: () => void
 }
 
-const safeStorage = createJSONStorage(() => ({
-  getItem: (key: string) => (typeof window !== 'undefined' ? localStorage.getItem(key) : null),
-  setItem: (key: string, val: string) => {
-    if (typeof window !== 'undefined') localStorage.setItem(key, val)
-  },
-  removeItem: (key: string) => {
-    if (typeof window !== 'undefined') localStorage.removeItem(key)
-  },
+const storage = createJSONStorage(() => (typeof window !== 'undefined' ? localStorage : {
+  getItem: () => null,
+  setItem: () => {},
+  removeItem: () => {},
 }))
 
 export const usePrivacyStore = create<PrivacyState>()(
@@ -25,7 +21,7 @@ export const usePrivacyStore = create<PrivacyState>()(
     }),
     {
       name: 'inv_hide_values',
-      storage: safeStorage,
+      storage,
     }
   )
 )

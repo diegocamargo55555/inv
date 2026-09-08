@@ -17,7 +17,6 @@ import (
 	"github.com/invest/backend/internal/config"
 	"github.com/invest/backend/internal/usecase"
 	"github.com/invest/backend/pkg/token"
-	"github.com/redis/go-redis/v9"
 )
 
 func main() {
@@ -35,58 +34,39 @@ func main() {
 		log.Fatalf("Database connection failed: %v", err)
 	}
 
-	// 3. Initialize Redis Client
-	var redisClient *redis.Client
-	if cfg.RedisAddr != "" {
-		redisClient = redis.NewClient(&redis.Options{
-			Addr:     cfg.RedisAddr,
-			Password: cfg.RedisPassword,
-			DB:       cfg.RedisDB,
-		})
-		if err := redisClient.Ping(context.Background()).Err(); err != nil {
-			log.Printf("Warning: Redis connection ping failed: %v. Running in-memory/direct mode.", err)
-		} else {
-			log.Println("Redis connection established.")
-		}
-	}
-
-	// 4. Initialize Infrastructure Repositories
+	// 3. Initialize Infrastructure Repositories
 	userRepo := postgres.NewUserRepo(db)
 	financeRepo := postgres.NewFinanceRepo(db)
 	txRepo := postgres.NewTxRepo(db)
 	catRepo := postgres.NewCategoryRepo(db)
 	budgetRepo := postgres.NewBudgetRepo(db)
-	cardRepo := postgres.NewCreditCardRepo(db)
 	portfolioRepo := postgres.NewPortfolioRepo(db)
 	assetRepo := postgres.NewAssetRepo(db)
 	investTxRepo := postgres.NewInvestTxRepo(db)
 	earningRepo := postgres.NewEarningRepo(db)
 
-	// 5. Initialize Security / Token Maker
+	// 4. Initialize Security / Token Maker
 	tokenMaker := token.NewJWTMaker(cfg.JWTSecret)
 
-	// 6. Initialize External Market Client (Brapi for B3 + Finnhub for US Markets)
-	marketClient := external.NewMarketClient(redisClient, cfg.BrapiToken, cfg.FinnhubToken)
+	// 5. Initialize External Market Client (Brapi for B3 + Finnhub for US Markets)
+	marketClient := external.NewMarketClient(cfg.BrapiToken, cfg.FinnhubToken)
 
-	// 7. Initialize Use Cases (Business Logic)
+	// 6. Initialize Use Cases (Business Logic)
 	authUC := usecase.NewAuthUseCase(userRepo, portfolioRepo, tokenMaker, cfg.JWTAccessExp, cfg.JWTRefreshExp)
-	financeUC := usecase.NewFinanceUseCase(financeRepo, txRepo, budgetRepo).WithMarketData(marketClient)
-	cardUC := usecase.NewCreditCardUseCase(cardRepo)
+	financeUC := usecase.NewFinanceUseCase(financeRepo, txRepo, budgetRepo, catRepo).WithMarketData(marketClient)
 	investUC := usecase.NewInvestmentUseCase(portfolioRepo, assetRepo, investTxRepo, earningRepo, financeRepo, marketClient)
 	marketUC := usecase.NewMarketUseCase(assetRepo, marketClient)
 
-	// 8. Initialize Delivery Handlers
+	// 7. Initialize Delivery Handlers
 	authHandler := handler.NewAuthHandler(authUC)
-	financeHandler := handler.NewFinanceHandler(financeUC, catRepo)
-	cardHandler := handler.NewCreditCardHandler(cardUC)
-	investHandler := handler.NewInvestmentHandler(investUC, marketUC, portfolioRepo, assetRepo, earningRepo)
+	financeHandler := handler.NewFinanceHandler(financeUC)
+	investHandler := handler.NewInvestmentHandler(investUC, marketUC)
 
-	// 9. Setup Gin Engine & Routes
+	// 8. Setup Gin Engine & Routes
 	router := httpAdapter.SetupRouter(httpAdapter.RouterConfig{
 		TokenMaker:        tokenMaker,
 		AuthHandler:       authHandler,
 		FinanceHandler:    financeHandler,
-		CreditCardHandler: cardHandler,
 		InvestmentHandler: investHandler,
 	})
 

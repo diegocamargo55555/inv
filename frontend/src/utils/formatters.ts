@@ -28,16 +28,3 @@ export function formatPercentage(value: number | string): string {
   if (num < 0) return `-${formatted}%`
   return `${formatted}%`
 }
-
-export function formatInvoiceMonth(monthYear: string): string {
-  const [year, month] = monthYear.split('-')
-  if (!year || !month) return monthYear
-
-  const date = new Date(Date.UTC(Number(year), Number(month) - 1, 1))
-  if (isNaN(date.getTime())) return monthYear
-
-  const rawMonth = date.toLocaleDateString('pt-BR', { month: 'short', timeZone: 'UTC' })
-  const cleanMonth = rawMonth.replace('.', '').slice(0, 3)
-  const capitalized = cleanMonth.charAt(0).toUpperCase() + cleanMonth.slice(1)
-  return `${capitalized}/${year}`
-}

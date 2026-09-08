@@ -13,7 +13,6 @@ type RouterConfig struct {
 	TokenMaker        *token.JWTMaker
 	AuthHandler       *handler.AuthHandler
 	FinanceHandler    *handler.FinanceHandler
-	CreditCardHandler *handler.CreditCardHandler
 	InvestmentHandler *handler.InvestmentHandler
 }
 
@@ -72,12 +71,6 @@ func SetupRouter(cfg RouterConfig) *gin.Engine {
 		protected.PUT("/transactions/:id", cfg.FinanceHandler.UpdateTransaction)
 		protected.DELETE("/transactions/:id", cfg.FinanceHandler.DeleteTransaction)
 		protected.GET("/transactions/summary", cfg.FinanceHandler.GetMonthlySummary)
-
-		// Credit Cards & Invoices
-		protected.POST("/cards", cfg.CreditCardHandler.CreateCard)
-		protected.GET("/cards", cfg.CreditCardHandler.GetCards)
-		protected.POST("/cards/expense", cfg.CreditCardHandler.CreateExpense)
-		protected.GET("/cards/:id/invoice", cfg.CreditCardHandler.GetInvoice)
 
 		// Budgets
 		protected.POST("/budgets", cfg.FinanceHandler.SetBudget)

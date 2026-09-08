@@ -36,6 +36,18 @@ func NewInvestmentUseCase(
 	}
 }
 
+func (uc *InvestmentUseCase) GetUserPortfolios(ctx context.Context, userID uuid.UUID) ([]domain.Portfolio, error) {
+	return uc.portfolioRepo.GetByUserID(ctx, userID)
+}
+
+func (uc *InvestmentUseCase) GetEarnings(ctx context.Context, portfolioID uuid.UUID) ([]domain.Earning, error) {
+	return uc.earningRepo.GetByPortfolioID(ctx, portfolioID)
+}
+
+func (uc *InvestmentUseCase) CreateEarning(ctx context.Context, earning *domain.Earning) error {
+	return uc.earningRepo.Create(ctx, earning)
+}
+
 // ExecuteBuy executes a buy transaction, updating position average price and cash account
 func (uc *InvestmentUseCase) ExecuteBuy(
 	ctx context.Context,

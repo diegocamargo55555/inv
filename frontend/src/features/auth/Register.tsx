@@ -82,7 +82,7 @@ export const Register: React.FC = () => {
             </h1>
 
             <p className="text-slate-400 text-base leading-relaxed">
-              Junte-se a investidores inteligentes que utilizam o CapitalHub para consolidar carteiras da B3, criptoativos, faturas de cartão e orçamentos mensais.
+              Junte-se a investidores inteligentes que utilizam o CapitalHub para consolidar carteiras da B3, criptoativos e orçamentos mensais.
             </p>
           </div>
 
@@ -90,7 +90,7 @@ export const Register: React.FC = () => {
           <div className="space-y-4 pt-2">
             {[
               'Cálculo automático de Preço Médio móvel ponderado (padrão B3/IRPF)',
-              'Gestão de cartões de crédito com faturas e parcelamentos futuros',
+              'Gestão de fluxo de caixa e orçamentos mensais categorizados',
               'Acompanhamento de proventos e calendário de dividendos',
               'Controle de orçamento mensal com alertas inteligentes de gastos',
             ].map((benefit, i) => (

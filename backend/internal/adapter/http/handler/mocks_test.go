@@ -166,52 +166,6 @@ func (m *mockTxRepo) Delete(ctx context.Context, id uuid.UUID) error {
 	return nil
 }
 
-type mockCardRepo struct {
-	cards      map[uuid.UUID]*domain.CreditCard
-	invoiceMap map[string][]domain.Transaction
-}
-
-func newMockCardRepo() *mockCardRepo {
-	return &mockCardRepo{
-		cards:      make(map[uuid.UUID]*domain.CreditCard),
-		invoiceMap: make(map[string][]domain.Transaction),
-	}
-}
-
-func (m *mockCardRepo) Create(ctx context.Context, card *domain.CreditCard) error {
-	m.cards[card.ID] = card
-	return nil
-}
-func (m *mockCardRepo) GetByID(ctx context.Context, id uuid.UUID) (*domain.CreditCard, error) {
-	return m.cards[id], nil
-}
-func (m *mockCardRepo) GetByUserID(ctx context.Context, uid uuid.UUID) ([]domain.CreditCard, error) {
-	var list []domain.CreditCard
-	for _, c := range m.cards {
-		if c.UserID == uid {
-			list = append(list, *c)
-		}
-	}
-	return list, nil
-}
-func (m *mockCardRepo) CreateTransactions(ctx context.Context, txs []domain.Transaction) error {
-	for _, tx := range txs {
-		if tx.CreditCardID != nil {
-			key := tx.CreditCardID.String() + "_" + tx.InvoiceMonth
-			m.invoiceMap[key] = append(m.invoiceMap[key], tx)
-		}
-	}
-	return nil
-}
-func (m *mockCardRepo) GetInvoiceTransactions(ctx context.Context, cardID uuid.UUID, monthYear string) ([]domain.Transaction, error) {
-	key := cardID.String() + "_" + monthYear
-	return m.invoiceMap[key], nil
-}
-func (m *mockCardRepo) Delete(ctx context.Context, id uuid.UUID) error {
-	delete(m.cards, id)
-	return nil
-}
-
 type mockBudgetRepo struct {
 	budgets map[string]*domain.Budget
 }
@@ -371,4 +325,7 @@ func (m *mockMarketProvider) GetQuote(ctx context.Context, ticker string) (decim
 }
 func (m *mockMarketProvider) GetExchangeRate(ctx context.Context, from, to string) (decimal.Decimal, error) {
 	return decimal.NewFromFloat(5.50), nil
+}
+func (m *mockMarketProvider) SearchAssets(ctx context.Context, query string) ([]domain.Asset, error) {
+	return nil, nil
 }

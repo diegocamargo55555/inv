@@ -34,30 +34,26 @@ func (uc *MarketUseCase) SearchAssets(ctx context.Context, query string) ([]doma
 
 	// 2. If query is provided, query Brapi list endpoint
 	if query != "" && uc.marketData != nil {
-		if searcher, ok := uc.marketData.(interface {
-			SearchAssets(ctx context.Context, query string) ([]domain.Asset, error)
-		}); ok {
-			brapiAssets, err := searcher.SearchAssets(ctx, query)
-			if err == nil && len(brapiAssets) > 0 {
-				seen := make(map[string]bool)
-				var merged []domain.Asset
+		brapiAssets, err := uc.marketData.SearchAssets(ctx, query)
+		if err == nil && len(brapiAssets) > 0 {
+			seen := make(map[string]bool)
+			var merged []domain.Asset
 
-				for _, a := range dbAssets {
-					seen[a.Ticker] = true
-					merged = append(merged, a)
-				}
-
-				for _, bAsset := range brapiAssets {
-					if !seen[bAsset.Ticker] {
-						seen[bAsset.Ticker] = true
-						bAsset.ID = uuid.New()
-						_ = uc.assetRepo.CreateOrUpdate(ctx, &bAsset)
-						merged = append(merged, bAsset)
-					}
-				}
-
-				return merged, nil
+			for _, a := range dbAssets {
+				seen[a.Ticker] = true
+				merged = append(merged, a)
 			}
+
+			for _, bAsset := range brapiAssets {
+				if !seen[bAsset.Ticker] {
+					seen[bAsset.Ticker] = true
+					bAsset.ID = uuid.New()
+					_ = uc.assetRepo.CreateOrUpdate(ctx, &bAsset)
+					merged = append(merged, bAsset)
+				}
+			}
+
+			return merged, nil
 		}
 	}
 

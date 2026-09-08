@@ -19,22 +19,6 @@ services:
     networks:
       - inv_network
 
-  redis:
-    image: redis:7-alpine
-    container_name: inv_redis
-    restart: unless-stopped
-    ports:
-      - "${REDIS_PORT:-6380}:6379"
-    volumes:
-      - redis_data:/data
-    healthcheck:
-      test: [ "CMD", "redis-cli", "ping" ]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-    networks:
-      - inv_network
-
   backend:
     build:
       context: ./backend
@@ -50,9 +34,6 @@ services:
       - DB_PASSWORD=${DB_PASS:-postgres123}
       - DB_NAME=${DB_NAME:-invest_db}
       - DB_SSLMODE=disable
-      - REDIS_ADDR=redis:6379
-      - REDIS_PASSWORD=
-      - REDIS_DB=0
       - JWT_SECRET=${JWT_SECRET:-supersecret-jwt-key-for-dev-only-32chars}
       - JWT_ACCESS_EXPIRY=15m
       - JWT_REFRESH_EXPIRY=168h
@@ -62,8 +43,6 @@ services:
       - "${HTTP_PORT:-8081}:8081"
     depends_on:
       postgres:
-        condition: service_healthy
-      redis:
         condition: service_healthy
     networks:
       - inv_network
@@ -84,7 +63,6 @@ services:
 
 volumes:
   postgres_data:
-  redis_data:
 
 networks:
   inv_network:
