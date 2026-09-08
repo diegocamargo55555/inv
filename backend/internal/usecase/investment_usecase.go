@@ -216,7 +216,7 @@ func (uc *InvestmentUseCase) GetPortfolioSummary(ctx context.Context, userID, po
 		return nil, err
 	}
 
-	usdBRLRate := decimal.NewFromFloat(5.50)
+	usdBRLRate := decimal.NewFromInt(1)
 	if uc.marketData != nil {
 		if rate, err := uc.marketData.GetExchangeRate(ctx, "USD", "BRL"); err == nil && !rate.IsZero() {
 			usdBRLRate = rate

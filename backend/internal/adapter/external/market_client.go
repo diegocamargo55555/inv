@@ -242,26 +242,123 @@ func (c *MarketClient) SearchAssets(ctx context.Context, query string) ([]domain
 }
 
 func (c *MarketClient) GetExchangeRate(ctx context.Context, fromCurrency, toCurrency string) (decimal.Decimal, error) {
-	if strings.EqualFold(fromCurrency, toCurrency) {
+	from := strings.ToUpper(strings.TrimSpace(fromCurrency))
+	to := strings.ToUpper(strings.TrimSpace(toCurrency))
+
+	if from == "" || to == "" || strings.EqualFold(from, to) {
 		return decimal.NewFromInt(1), nil
 	}
 
-	cacheKey := fmt.Sprintf("fx:%s_%s", strings.ToUpper(fromCurrency), strings.ToUpper(toCurrency))
+	cacheKey := fmt.Sprintf("fx:%s_%s", from, to)
+	lastKnownKey := fmt.Sprintf("fx:last_known:%s_%s", from, to)
+
+	// 1. Check short-term Redis cache (5 minutes to keep it as fresh as possible)
 	if c.redisClient != nil {
 		if cached, err := c.redisClient.Get(ctx, cacheKey).Result(); err == nil && cached != "" {
-			if d, err := decimal.NewFromString(cached); err == nil {
+			if d, err := decimal.NewFromString(cached); err == nil && d.GreaterThan(decimal.Zero) {
 				return d, nil
 			}
 		}
 	}
 
-	// Exchange rate USD -> BRL (default 5.50)
-	rate := decimal.NewFromFloat(5.50)
-	if c.redisClient != nil {
-		_ = c.redisClient.Set(ctx, cacheKey, rate.String(), 1*time.Hour).Err()
+	// 2. Fetch live rate from primary provider (AwesomeAPI)
+	rate, err := c.fetchLiveRateAwesome(ctx, from, to)
+	if err != nil || rate.IsZero() {
+		// 3. Fallback to secondary provider (Frankfurter ECB rates)
+		rate, err = c.fetchLiveRateFrankfurter(ctx, from, to)
 	}
 
-	return rate, nil
+	if err == nil && !rate.IsZero() {
+		if c.redisClient != nil {
+			_ = c.redisClient.Set(ctx, cacheKey, rate.String(), 5*time.Minute).Err()
+			_ = c.redisClient.Set(ctx, lastKnownKey, rate.String(), 0).Err() // Persist last real rate without expiration
+		}
+		return rate, nil
+	}
+
+	// 4. If all live providers fail, use the last successfully recorded market rate from Redis
+	if c.redisClient != nil {
+		if lastKnown, err := c.redisClient.Get(ctx, lastKnownKey).Result(); err == nil && lastKnown != "" {
+			if d, err := decimal.NewFromString(lastKnown); err == nil && d.GreaterThan(decimal.Zero) {
+				return d, nil
+			}
+		}
+	}
+
+	// 5. Offline initial fallback (last market reference, not arbitrary 5.50)
+	if from == "USD" && to == "BRL" {
+		return decimal.NewFromFloat(5.1259), nil
+	}
+	if from == "EUR" && to == "BRL" {
+		return decimal.NewFromFloat(5.9576), nil
+	}
+
+	return decimal.NewFromInt(1), err
+}
+
+func (c *MarketClient) fetchLiveRateAwesome(ctx context.Context, from, to string) (decimal.Decimal, error) {
+	url := fmt.Sprintf("https://economia.awesomeapi.com.br/last/%s-%s", from, to)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return decimal.Zero, err
+	}
+	req.Header.Set("User-Agent", "CapitalHub-Fintech/1.0")
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return decimal.Zero, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return decimal.Zero, fmt.Errorf("awesomeapi status %d", resp.StatusCode)
+	}
+
+	var data map[string]struct {
+		Bid string `json:"bid"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
+		return decimal.Zero, err
+	}
+
+	pairKey := fmt.Sprintf("%s%s", from, to)
+	if item, ok := data[pairKey]; ok && item.Bid != "" {
+		if d, err := decimal.NewFromString(item.Bid); err == nil && d.GreaterThan(decimal.Zero) {
+			return d, nil
+		}
+	}
+	return decimal.Zero, fmt.Errorf("cotação não encontrada no AwesomeAPI")
+}
+
+func (c *MarketClient) fetchLiveRateFrankfurter(ctx context.Context, from, to string) (decimal.Decimal, error) {
+	url := fmt.Sprintf("https://api.frankfurter.dev/v1/latest?from=%s&to=%s", from, to)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return decimal.Zero, err
+	}
+	req.Header.Set("User-Agent", "CapitalHub-Fintech/1.0")
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return decimal.Zero, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return decimal.Zero, fmt.Errorf("frankfurter status %d", resp.StatusCode)
+	}
+
+	var data struct {
+		Rates map[string]float64 `json:"rates"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
+		return decimal.Zero, err
+	}
+
+	if val, ok := data.Rates[to]; ok && val > 0 {
+		return decimal.NewFromFloat(val), nil
+	}
+	return decimal.Zero, fmt.Errorf("cotação não encontrada no Frankfurter")
 }
 
 type finnhubQuoteResponse struct {

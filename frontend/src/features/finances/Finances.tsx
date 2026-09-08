@@ -33,9 +33,12 @@ export const Finances: React.FC = () => {
   // New Account Form
   const [accName, setAccName] = useState('')
   const [accType, setAccType] = useState('checking')
+  const [accCurrency, setAccCurrency] = useState('BRL')
   const [accBalance, setAccBalance] = useState('')
   const [accInstitution, setAccInstitution] = useState('')
   const [accColor] = useState('#10B981')
+
+  const [usdRate, setUsdRate] = useState<number>(0)
 
   // New Budget Form
   const [budgetCatId, setBudgetCatId] = useState('')
@@ -43,16 +46,21 @@ export const Finances: React.FC = () => {
 
   const loadData = async () => {
     try {
-      const [accRes, txRes, catRes, budRes] = await Promise.all([
+      const [accRes, txRes, catRes, budRes, fxRes] = await Promise.all([
         api.get<Account[]>('/accounts'),
         api.get<Transaction[]>('/transactions?limit=100'),
         api.get<Category[]>('/categories'),
         api.get<BudgetProgress[]>('/budgets'),
+        api.get<{ rate: string }>('/currencies/exchange-rate?from=USD&to=BRL').catch(() => null),
       ])
       setAccounts(accRes.data)
       setTransactions(txRes.data)
       setCategories(catRes.data)
       setBudgets(budRes.data)
+      const liveUsd = parseFloat(fxRes?.data?.rate || '0')
+      if (!isNaN(liveUsd) && liveUsd > 0) {
+        setUsdRate(liveUsd)
+      }
       if (accRes.data.length > 0 && !txAccId) setTxAccId(accRes.data[0].id)
     } catch (err) {
       console.error('Failed to load finances data:', err)
@@ -62,6 +70,15 @@ export const Finances: React.FC = () => {
   useEffect(() => {
     loadData()
   }, [])
+
+  const handleOpenCreateAccount = () => {
+    setAccName('')
+    setAccType('checking')
+    setAccCurrency('BRL')
+    setAccBalance('')
+    setAccInstitution('')
+    setIsAccModalOpen(true)
+  }
 
   const handleOpenCreateTx = () => {
     setEditingTx(null)
@@ -137,12 +154,15 @@ export const Finances: React.FC = () => {
         name: accName,
         type: accType,
         initial_balance: parseFloat(accBalance || '0'),
+        currency: accCurrency,
         institution: accInstitution,
         color: accColor,
       })
       setIsAccModalOpen(false)
       setAccName('')
       setAccBalance('')
+      setAccInstitution('')
+      setAccCurrency('BRL')
       loadData()
     } catch (err) {
       alert('Erro ao criar conta')
@@ -167,7 +187,7 @@ export const Finances: React.FC = () => {
     }
   }
 
-  const displayVal = (val: string | number) => (hideValues ? '••••••' : formatCurrency(val))
+  const displayVal = (val: string | number, currency = 'BRL') => (hideValues ? '••••••' : formatCurrency(val, currency))
 
   const filteredTransactions = transactions.filter((tx) => {
     if (filterType !== 'all' && tx.type !== filterType) return false
@@ -185,7 +205,7 @@ export const Finances: React.FC = () => {
         </div>
         <div className="flex gap-3">
           <button
-            onClick={() => setIsAccModalOpen(true)}
+            onClick={handleOpenCreateAccount}
             className="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold border border-slate-700 flex items-center gap-1.5 transition-colors"
           >
             <Plus className="w-3.5 h-3.5" />
@@ -217,10 +237,19 @@ export const Finances: React.FC = () => {
                     <span className="text-xs text-slate-500 capitalize">{acc.institution || acc.type}</span>
                   </div>
                 </div>
+                <span className="px-2 py-0.5 rounded-lg bg-slate-800 border border-slate-700/80 text-[10px] font-mono font-bold text-slate-300 uppercase">
+                  {acc.currency || 'BRL'}
+                </span>
               </div>
               <div className="mt-4 pt-3 border-t border-slate-800/80">
                 <span className="text-xs text-slate-400 block">Saldo Atual</span>
-                <span className="text-lg font-bold text-white">{displayVal(acc.balance)}</span>
+                <span className="text-lg font-bold text-white">{displayVal(acc.balance, acc.currency)}</span>
+                {acc.currency === 'USD' && (
+                  <span className="text-[11px] text-slate-400 block mt-1 font-mono">
+                    ≈ {displayVal(parseFloat(acc.balance || '0') * usdRate, 'BRL')}{' '}
+                    <span className="text-[10px] text-slate-500">(USD: {formatCurrency(usdRate)})</span>
+                  </span>
+                )}
               </div>
             </div>
           ))}
@@ -371,9 +400,22 @@ export const Finances: React.FC = () => {
                       {tx.category?.name || 'Geral'}
                     </span>
                   </td>
-                  <td className="py-3.5 text-slate-400">{tx.account?.name || tx.credit_card?.name || 'Conta Padrão'}</td>
+                  <td className="py-3.5 text-slate-400">
+                    {tx.account ? (
+                      <span className="flex items-center gap-1.5">
+                        <span>{tx.account.name}</span>
+                        {tx.account.currency && tx.account.currency !== 'BRL' && (
+                          <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700/80">
+                            {tx.account.currency}
+                          </span>
+                        )}
+                      </span>
+                    ) : (
+                      tx.credit_card?.name || 'Conta Padrão'
+                    )}
+                  </td>
                   <td className={`py-3.5 text-right font-bold ${tx.type === 'income' ? 'text-emerald-400' : 'text-slate-200'}`}>
-                    {tx.type === 'expense' ? `-${displayVal(tx.amount)}` : `+${displayVal(tx.amount)}`}
+                    {tx.type === 'expense' ? `-${displayVal(tx.amount, tx.account?.currency)}` : `+${displayVal(tx.amount, tx.account?.currency)}`}
                   </td>
                   <td className="py-3.5 text-center">
                     <div className="flex items-center justify-center gap-1.5">
@@ -440,7 +482,9 @@ export const Finances: React.FC = () => {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs font-medium text-slate-300">Valor (R$)</label>
+                  <label className="text-xs font-medium text-slate-300">
+                    Valor ({accounts.find((a) => a.id === txAccId)?.currency || 'BRL'})
+                  </label>
                   <input
                     type="number"
                     step="0.01"
@@ -477,7 +521,7 @@ export const Finances: React.FC = () => {
                     <option value="">Selecione uma conta...</option>
                     {accounts.map((acc) => (
                       <option key={acc.id} value={acc.id}>
-                        {acc.name} ({displayVal(acc.balance)})
+                        {acc.name} ({displayVal(acc.balance, acc.currency)})
                       </option>
                     ))}
                   </select>
@@ -555,27 +599,43 @@ export const Finances: React.FC = () => {
                   </select>
                 </div>
                 <div>
-                  <label className="text-xs font-medium text-slate-300">Saldo Inicial (R$)</label>
+                  <label className="text-xs font-medium text-slate-300">Moeda</label>
+                  <select
+                    value={accCurrency}
+                    onChange={(e) => setAccCurrency(e.target.value)}
+                    className="w-full px-3 py-2 bg-dark-950 border border-slate-800 rounded-xl text-xs text-white focus:outline-none focus:border-brand-500"
+                  >
+                    <option value="BRL">BRL - Real Brasileiro (R$)</option>
+                    <option value="USD">USD - Dólar Americano ($)</option>
+                    <option value="EUR">EUR - Euro (€)</option>
+                    <option value="GBP">GBP - Libra Esterlina (£)</option>
+                    <option value="BTC">BTC - Bitcoin (₿)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-medium text-slate-300">Instituição</label>
+                  <input
+                    type="text"
+                    placeholder="Ex: Nubank, Nomad, Avenue, Inter"
+                    value={accInstitution}
+                    onChange={(e) => setAccInstitution(e.target.value)}
+                    className="w-full px-3 py-2 bg-dark-950 border border-slate-800 rounded-xl text-xs text-white"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-slate-300">Saldo Inicial ({accCurrency})</label>
                   <input
                     type="number"
                     step="0.01"
                     placeholder="0,00"
                     value={accBalance}
                     onChange={(e) => setAccBalance(e.target.value)}
-                    className="w-full px-3 py-2 bg-dark-950 border border-slate-800 rounded-xl text-xs text-white"
+                    className="w-full px-3 py-2 bg-dark-950 border border-slate-800 rounded-xl text-xs text-white font-mono"
                   />
                 </div>
-              </div>
-
-              <div>
-                <label className="text-xs font-medium text-slate-300">Instituição</label>
-                <input
-                  type="text"
-                  placeholder="Ex: Nubank, Banco do Brasil"
-                  value={accInstitution}
-                  onChange={(e) => setAccInstitution(e.target.value)}
-                  className="w-full px-3 py-2 bg-dark-950 border border-slate-800 rounded-xl text-xs text-white"
-                />
               </div>
 
               <div className="flex gap-2 pt-2">

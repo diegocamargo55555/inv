@@ -49,7 +49,7 @@ func (h *FinanceHandler) CreateAccount(c *gin.Context) {
 		return
 	}
 
-	acc, err := h.financeUC.CreateAccount(c.Request.Context(), userID, req.Name, req.Type, req.InitialBalance, req.Institution, req.Color)
+	acc, err := h.financeUC.CreateAccount(c.Request.Context(), userID, req.Name, req.Type, req.InitialBalance, req.Currency, req.Institution, req.Color)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return

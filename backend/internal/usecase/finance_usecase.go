@@ -3,6 +3,7 @@ package usecase
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -14,6 +15,7 @@ type FinanceUseCase struct {
 	accRepo    AccountRepository
 	txRepo     TransactionRepository
 	budgetRepo BudgetRepository
+	marketData MarketDataProvider
 }
 
 func NewFinanceUseCase(
@@ -28,10 +30,19 @@ func NewFinanceUseCase(
 	}
 }
 
+func (uc *FinanceUseCase) WithMarketData(marketData MarketDataProvider) *FinanceUseCase {
+	uc.marketData = marketData
+	return uc
+}
+
 // CreateAccount creates a new bank account or wallet
-func (uc *FinanceUseCase) CreateAccount(ctx context.Context, userID uuid.UUID, name string, accType domain.AccountType, initialBalance decimal.Decimal, institution, color string) (*domain.Account, error) {
+func (uc *FinanceUseCase) CreateAccount(ctx context.Context, userID uuid.UUID, name string, accType domain.AccountType, initialBalance decimal.Decimal, currency, institution, color string) (*domain.Account, error) {
 	if color == "" {
 		color = "#10B981"
+	}
+	currency = strings.ToUpper(strings.TrimSpace(currency))
+	if currency == "" {
+		currency = "BRL"
 	}
 	acc := &domain.Account{
 		ID:          uuid.New(),
@@ -39,7 +50,7 @@ func (uc *FinanceUseCase) CreateAccount(ctx context.Context, userID uuid.UUID, n
 		Name:        name,
 		Type:        accType,
 		Balance:     initialBalance,
-		Currency:    "BRL",
+		Currency:    currency,
 		Institution: institution,
 		Color:       color,
 		CreatedAt:   time.Now(),
@@ -138,16 +149,28 @@ func (uc *FinanceUseCase) GetMonthlySummary(ctx context.Context, userID uuid.UUI
 		ByCategory:   make(map[string]decimal.Decimal),
 	}
 
+	usdBRLRate := decimal.NewFromInt(1)
+	if uc.marketData != nil {
+		if rate, err := uc.marketData.GetExchangeRate(ctx, "USD", "BRL"); err == nil && !rate.IsZero() {
+			usdBRLRate = rate
+		}
+	}
+
 	for _, tx := range txs {
+		amountBRL := tx.Amount
+		if tx.Account != nil && strings.EqualFold(tx.Account.Currency, "USD") {
+			amountBRL = tx.Amount.Mul(usdBRLRate).Round(4)
+		}
+
 		if tx.Type == domain.TxTypeIncome {
-			summary.TotalIncome = summary.TotalIncome.Add(tx.Amount)
+			summary.TotalIncome = summary.TotalIncome.Add(amountBRL)
 		} else if tx.Type == domain.TxTypeExpense {
-			summary.TotalExpense = summary.TotalExpense.Add(tx.Amount)
+			summary.TotalExpense = summary.TotalExpense.Add(amountBRL)
 			catName := "Sem Categoria"
 			if tx.Category != nil {
 				catName = tx.Category.Name
 			}
-			summary.ByCategory[catName] = summary.ByCategory[catName].Add(tx.Amount)
+			summary.ByCategory[catName] = summary.ByCategory[catName].Add(amountBRL)
 		}
 	}
 	summary.NetBalance = summary.TotalIncome.Sub(summary.TotalExpense)

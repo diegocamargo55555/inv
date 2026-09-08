@@ -23,21 +23,27 @@ export const Dashboard: React.FC = () => {
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [summary, setSummary] = useState<MonthlySummary | null>(null)
   const [portfolio, setPortfolio] = useState<PortfolioSummary | null>(null)
+  const [usdRate, setUsdRate] = useState<number>(0)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [accRes, txRes, sumRes, portListRes] = await Promise.all([
+        const [accRes, txRes, sumRes, portListRes, fxRes] = await Promise.all([
           api.get<Account[]>('/accounts'),
           api.get<Transaction[]>('/transactions?limit=5'),
           api.get<MonthlySummary>('/transactions/summary'),
           api.get<any[]>('/investments/portfolios'),
+          api.get<{ rate: string }>('/currencies/exchange-rate?from=USD&to=BRL').catch(() => null),
         ])
 
         setAccounts(accRes.data)
         setTransactions(txRes.data)
         setSummary(sumRes.data)
+        const liveUsd = parseFloat(fxRes?.data?.rate || '0')
+        if (!isNaN(liveUsd) && liveUsd > 0) {
+          setUsdRate(liveUsd)
+        }
 
         if (portListRes.data && portListRes.data.length > 0) {
           const defaultPort = portListRes.data[0]
@@ -55,7 +61,15 @@ export const Dashboard: React.FC = () => {
   }, [])
 
   // Calculations
-  const totalBankBalance = accounts.reduce((acc, a) => acc + parseFloat(a.balance || '0'), 0)
+  const hasForeignCurrency = accounts.some((a) => (a.currency || 'BRL').toUpperCase() !== 'BRL')
+  const totalBankBalance = accounts.reduce((acc, a) => {
+    const bal = parseFloat(a.balance || '0')
+    const cur = (a.currency || 'BRL').toUpperCase()
+    if (cur === 'USD') {
+      return acc + bal * usdRate
+    }
+    return acc + bal
+  }, 0)
   const totalInvestments = portfolio ? parseFloat(portfolio.total_equity_brl || '0') : 0
   const netWorth = totalBankBalance + totalInvestments
 
@@ -134,7 +148,14 @@ export const Dashboard: React.FC = () => {
           </div>
           <div className="mt-3">
             <div className="text-2xl font-black text-white">{displayVal(totalBankBalance)}</div>
-            <span className="text-xs text-slate-500 mt-1 block">{accounts.length} conta(s) cadastradas</span>
+            <span className="text-xs text-slate-500 mt-1 block">
+              {accounts.length} conta(s) cadastradas
+              {hasForeignCurrency && (
+                <span className="text-brand-400 block text-[11px] mt-0.5 font-medium">
+                  Convertido em BRL (USD: {formatCurrency(usdRate)})
+                </span>
+              )}
+            </span>
           </div>
         </div>
 
@@ -286,7 +307,7 @@ export const Dashboard: React.FC = () => {
                   </div>
                 </div>
                 <div className={`text-sm font-bold ${tx.type === 'income' ? 'text-emerald-400' : 'text-slate-200'}`}>
-                  {tx.type === 'expense' ? `-${displayVal(tx.amount)}` : `+${displayVal(tx.amount)}`}
+                  {tx.type === 'expense' ? `-${displayVal(tx.amount, tx.account?.currency)}` : `+${displayVal(tx.amount, tx.account?.currency)}`}
                 </div>
               </div>
             ))}

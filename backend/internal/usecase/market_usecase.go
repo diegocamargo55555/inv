@@ -157,3 +157,11 @@ func (uc *MarketUseCase) UpdateAssetPrice(ctx context.Context, assetID uuid.UUID
 
 	return quote, nil
 }
+
+// GetExchangeRate gets real-time or cached exchange rate between two currencies
+func (uc *MarketUseCase) GetExchangeRate(ctx context.Context, from, to string) (decimal.Decimal, error) {
+	if uc.marketData == nil {
+		return decimal.Zero, domain.ErrAssetNotFound
+	}
+	return uc.marketData.GetExchangeRate(ctx, from, to)
+}

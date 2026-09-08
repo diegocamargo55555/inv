@@ -70,7 +70,7 @@ func main() {
 
 	// 7. Initialize Use Cases (Business Logic)
 	authUC := usecase.NewAuthUseCase(userRepo, portfolioRepo, tokenMaker, cfg.JWTAccessExp, cfg.JWTRefreshExp)
-	financeUC := usecase.NewFinanceUseCase(financeRepo, txRepo, budgetRepo)
+	financeUC := usecase.NewFinanceUseCase(financeRepo, txRepo, budgetRepo).WithMarketData(marketClient)
 	cardUC := usecase.NewCreditCardUseCase(cardRepo)
 	investUC := usecase.NewInvestmentUseCase(portfolioRepo, assetRepo, investTxRepo, earningRepo, financeRepo, marketClient)
 	marketUC := usecase.NewMarketUseCase(assetRepo, marketClient)

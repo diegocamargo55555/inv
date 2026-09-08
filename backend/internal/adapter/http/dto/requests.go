@@ -27,6 +27,7 @@ type CreateAccountRequest struct {
 	Name           string             `json:"name" binding:"required"`
 	Type           domain.AccountType `json:"type" binding:"required"`
 	InitialBalance decimal.Decimal    `json:"initial_balance"`
+	Currency       string             `json:"currency"`
 	Institution    string             `json:"institution"`
 	Color          string             `json:"color"`
 }

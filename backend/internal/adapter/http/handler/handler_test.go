@@ -117,6 +117,7 @@ func TestHTTPHandlers_FinanceAndCards(t *testing.T) {
 			Name:           "Nubank Conta",
 			Type:           domain.AccountTypeChecking,
 			InitialBalance: decimal.NewFromFloat(1500.00),
+			Currency:       "BRL",
 			Institution:    "Nu Pagamentos",
 			Color:          "#820AD1",
 		})
@@ -130,6 +131,30 @@ func TestHTTPHandlers_FinanceAndCards(t *testing.T) {
 		var acc domain.Account
 		_ = json.Unmarshal(w.Body.Bytes(), &acc)
 		accountID = acc.ID.String()
+		assert.Equal(t, "BRL", acc.Currency)
+	})
+
+	t.Run("POST /api/v1/accounts creates USD account", func(t *testing.T) {
+		body, _ := json.Marshal(dto.CreateAccountRequest{
+			Name:           "Nomad Global Account",
+			Type:           domain.AccountTypeChecking,
+			InitialBalance: decimal.NewFromFloat(500.00),
+			Currency:       "USD",
+			Institution:    "Nomad",
+			Color:          "#00B4D8",
+		})
+		req := httptest.NewRequest(http.MethodPost, "/api/v1/accounts", bytes.NewBuffer(body))
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Authorization", authHeader)
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusCreated, w.Code)
+		var usdAcc domain.Account
+		_ = json.Unmarshal(w.Body.Bytes(), &usdAcc)
+		assert.Equal(t, "USD", usdAcc.Currency)
+		assert.Equal(t, "Nomad Global Account", usdAcc.Name)
+		assert.True(t, usdAcc.Balance.Equal(decimal.NewFromFloat(500.00)))
 	})
 
 	var createdTxID string

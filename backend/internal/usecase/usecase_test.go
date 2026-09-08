@@ -471,7 +471,7 @@ func TestFinanceUseCase_Full(t *testing.T) {
 	_ = catRepo.Create(ctx, categoryFood)
 
 	t.Run("create account and apply income and expense", func(t *testing.T) {
-		acc, err := uc.CreateAccount(ctx, userID, "Itaú", domain.AccountTypeChecking, decimal.NewFromFloat(1000.00), "Itaú Unibanco", "#EC7000")
+		acc, err := uc.CreateAccount(ctx, userID, "Itaú", domain.AccountTypeChecking, decimal.NewFromFloat(1000.00), "BRL", "Itaú Unibanco", "#EC7000")
 		require.NoError(t, err)
 		require.NotNil(t, acc)
 		assert.True(t, acc.Balance.Equal(decimal.NewFromFloat(1000.00)))
@@ -736,7 +736,7 @@ func TestFinanceUseCase_UpdateAndDeleteTransaction(t *testing.T) {
 	ctx := context.Background()
 	userID := uuid.New()
 
-	acc, err := uc.CreateAccount(ctx, userID, "Nubank", domain.AccountTypeChecking, decimal.NewFromFloat(2000.00), "Nu Pagamentos", "#820AD1")
+	acc, err := uc.CreateAccount(ctx, userID, "Nubank", domain.AccountTypeChecking, decimal.NewFromFloat(2000.00), "BRL", "Nu Pagamentos", "#820AD1")
 	require.NoError(t, err)
 
 	date := time.Date(2026, time.March, 10, 12, 0, 0, 0, time.UTC)

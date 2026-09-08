@@ -94,6 +94,9 @@ func SetupRouter(cfg RouterConfig) *gin.Engine {
 		protected.POST("/investments/assets/:id/quote", cfg.InvestmentHandler.UpdateQuote)
 		protected.GET("/investments/portfolios/:id/earnings", cfg.InvestmentHandler.GetEarnings)
 		protected.POST("/investments/earnings", cfg.InvestmentHandler.CreateEarning)
+
+		// Currencies & FX
+		protected.GET("/currencies/exchange-rate", cfg.InvestmentHandler.GetExchangeRate)
 	}
 
 	return r

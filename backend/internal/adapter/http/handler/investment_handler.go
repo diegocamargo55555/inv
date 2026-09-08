@@ -318,3 +318,20 @@ func (h *InvestmentHandler) DeleteOrder(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"message": "ordem excluída e carteira recalculada com sucesso"})
 }
+
+func (h *InvestmentHandler) GetExchangeRate(c *gin.Context) {
+	from := c.DefaultQuery("from", "USD")
+	to := c.DefaultQuery("to", "BRL")
+
+	rate, err := h.marketUC.GetExchangeRate(c.Request.Context(), from, to)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"from": from,
+		"to":   to,
+		"rate": rate.String(),
+	})
+}
