@@ -1,10 +1,10 @@
 package config
 
 import (
+	"bufio"
 	"os"
+	"strings"
 	"time"
-
-	"github.com/joho/godotenv"
 )
 
 type Config struct {
@@ -26,8 +26,32 @@ type Config struct {
 	FinnhubToken   string
 }
 
+func loadDotEnv(paths ...string) {
+	for _, path := range paths {
+		f, err := os.Open(path)
+		if err != nil {
+			continue
+		}
+		scanner := bufio.NewScanner(f)
+		for scanner.Scan() {
+			line := strings.TrimSpace(scanner.Text())
+			if line == "" || strings.HasPrefix(line, "#") {
+				continue
+			}
+			parts := strings.SplitN(line, "=", 2)
+			if len(parts) == 2 {
+				key, val := strings.TrimSpace(parts[0]), strings.TrimSpace(parts[1])
+				if os.Getenv(key) == "" {
+					_ = os.Setenv(key, val)
+				}
+			}
+		}
+		f.Close()
+	}
+}
+
 func LoadConfig() (*Config, error) {
-	_ = godotenv.Load(".env", "../.env")
+	loadDotEnv(".env", "../.env")
 
 	cfg := &Config{
 		AppEnv:        getEnv("APP_ENV", "development"),

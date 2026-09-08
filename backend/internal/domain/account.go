@@ -41,8 +41,6 @@ func (a *Account) ApplyTransaction(amount decimal.Decimal, txType TransactionTyp
 		a.Balance = a.Balance.Add(amount)
 	case TxTypeExpense:
 		a.Balance = a.Balance.Sub(amount)
-	default:
-		// Transfers are handled specifically in use case
 	}
 	return nil
 }

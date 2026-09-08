@@ -3,7 +3,6 @@ package http
 import (
 	"time"
 
-	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/invest/backend/internal/adapter/http/handler"
 	"github.com/invest/backend/internal/adapter/http/middleware"
@@ -21,15 +20,19 @@ type RouterConfig struct {
 func SetupRouter(cfg RouterConfig) *gin.Engine {
 	r := gin.Default()
 
-	// CORS Configuration
-	r.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{"*"},
-		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
-		AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization"},
-		ExposeHeaders:    []string{"Content-Length"},
-		AllowCredentials: true,
-		MaxAge:           12 * time.Hour,
-	}))
+	// CORS Configuration (Native Gin)
+	r.Use(func(c *gin.Context) {
+		c.Header("Access-Control-Allow-Origin", "*")
+		c.Header("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
+		c.Header("Access-Control-Allow-Headers", "Origin, Content-Type, Accept, Authorization")
+		c.Header("Access-Control-Expose-Headers", "Content-Length")
+		c.Header("Access-Control-Allow-Credentials", "true")
+		if c.Request.Method == "OPTIONS" {
+			c.AbortWithStatus(204)
+			return
+		}
+		c.Next()
+	})
 
 	// Health check
 	r.GET("/api/v1/health", func(c *gin.Context) {
